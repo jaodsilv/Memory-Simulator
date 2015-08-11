@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <readline/history.h>
 
 void removenl(char *);
 
@@ -63,3 +64,18 @@ void removenl(char *str)
   if ((strlen(str) > 0) && (str[strlen(str) - 1] == '\n'))
         str[strlen(str) - 1] = '\0';
 }
+
+
+
+/*
+Notes:
+
+1) Certifique-se de que o pacote libreadline-dev foi instlado. Isso pode ser
+feito, por exemplo, atraves do comando aptitude install libreadline-dev
+
+2) cd e pwd estão implementados de forma parecida com o seguinte link:
+https://cnswww.cns.cwru.edu/php/chet/readline/readline.html
+com cada comando usando chdir() e getcwd(), respectivamente.
+
+
+*/
