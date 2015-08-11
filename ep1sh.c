@@ -8,13 +8,13 @@ void removenl(char *);
 int main(int argc, char **argv)
 {
   char wd[256];
-  char cmd[16];
+  char cmd[256];
 
   while(1){
     if(getcwd(wd, sizeof(wd)) != NULL) {
       fflush(stdin);
       printf("[%s] ", wd);
-      fgets(cmd, 15, stdin);
+      fgets(cmd, 255, stdin);
       removenl(cmd);
       if(strcmp(cmd, "/bin/ls -l") == 0) {
         if(system("/bin/ls -l") != 0){
@@ -23,19 +23,32 @@ int main(int argc, char **argv)
         }
       }
       else if(strncmp(cmd, "cd ", 3) == 0) {
-        char *cdarg, *path; int i;
+        char *path; int i;
 
-        cdarg = malloc((strlen(cmd) - 2) * sizeof(*cdarg));
+        if(cmd[3] != '/') {
+          char *cdarg;
+          cdarg = malloc((strlen(cmd) - 2) * sizeof(*cdarg));
 
-        for(i = 3; i < strlen(cmd); i++) cdarg[i - 3] = cmd[i];
-        cdarg[i] = '\0';
+          for(i = 3; i < strlen(cmd); i++) cdarg[i - 3] = cmd[i];
+          cdarg[i] = '\0';
 
-        path = malloc((strlen(wd) + strlen(cdarg) + 2) * sizeof(*path));
-        strcpy(path, wd); strcat(path, "/"); strcat(path, cdarg);
-        if(chdir(path) != 0)
-          printf("Error changing directory. Make sure directory exists.\n");
+          path = malloc((strlen(wd) + strlen(cdarg) + 2) * sizeof(*path));
+          strcpy(path, wd); strcat(path, "/"); strcat(path, cdarg);
+          if(chdir(path) != 0)
+            printf("Error changing directory. Make sure directory exists.\n");
 
-        free(cdarg); cdarg = NULL;
+          free(cdarg); cdarg = NULL;
+        }
+        else {
+          path = malloc((strlen(cmd) - 2) * sizeof(*path));
+
+          for(i = 3; i < strlen(cmd); i++) path[i - 3] = cmd[i];
+          path[i] = '\0';
+
+          if(chdir(path) != 0)
+            printf("Error changing directory. Make sure directory exists.\n");
+        }
+        free(path); path = NULL;
       }
       else printf("Unrecognized command \"%s\".\n", cmd);
     }
