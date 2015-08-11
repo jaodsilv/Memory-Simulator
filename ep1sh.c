@@ -23,7 +23,7 @@ int main(int argc, char **argv)
           return 1;
         }
       }
-      else if(strncmp(cmd, "cd ", 3) == 0) {
+      else if(strncmp(cmd, "cd ", 3) == 0 && strlen(cmd) > 3) {
         char *path; int i;
 
         if(cmd[3] != '/') {
@@ -35,8 +35,8 @@ int main(int argc, char **argv)
 
           path = malloc((strlen(wd) + strlen(cdarg) + 2) * sizeof(*path));
           strcpy(path, wd); strcat(path, "/"); strcat(path, cdarg);
-          if(chdir(path) != 0)
-            printf("Error changing directory. Make sure directory exists.\n");
+
+          if(chdir(path) != 0) printf("Bad argument for 'cd'.\n");
 
           free(cdarg); cdarg = NULL;
         }
@@ -46,11 +46,11 @@ int main(int argc, char **argv)
           for(i = 3; i < strlen(cmd); i++) path[i - 3] = cmd[i];
           path[i] = '\0';
 
-          if(chdir(path) != 0)
-            printf("Error changing directory. Make sure directory exists.\n");
+          if(chdir(path) != 0) printf("Bad argument for 'cd'.\n");
         }
         free(path); path = NULL;
       }
+      else if(strncmp(cmd, "cd", 2) == 0) printf("Bad argument for 'cd'.\n");
       else printf("Unrecognized command \"%s\".\n", cmd);
     }
     else perror("Error (getcwd).\n");
