@@ -7,12 +7,14 @@
 
 /*Prototypes*/
 void removenl(char *);
+void filter(char *, int, char *);
 int getcmd(char *);
 int expand(char *);
 int cmdls(char *);
 int cmdcd(char *, char *);
 int cmdexit(char *);
 int cmdsave(char *);
+int cmdload(char *);
 void unrecognized(char *);
 /*************/
 
@@ -32,15 +34,33 @@ int main(int argc, char **argv)
       if((result = getcmd(cmd)) == -1)
         printf("Expansion attempt has failed.\n");
 
-
       if(cmdls(cmd));
       else if(cmdcd(wd, cmd));
       else if(cmdexit(cmd)) exit = 1;
       else if(cmdsave(cmd));
       else unrecognized(cmd);
-
     }
     else perror("Error (getcwd).\n");
+  }
+  return 0;
+}
+
+/*Loads history of a file named 'fname'*/
+int cmdload(char *cmd)
+{
+  if(strncmp(cmd, "load", 4) == 0) {
+    char *fname;
+    fname = malloc((strlen(cmd) - 2) * sizeof(*fname));
+
+    filter(cmd, 4, fname);
+
+    if(isalnum(fname[0]))
+      read_history(fname);
+    else
+      printf("Expected alphanumeric file name argument for 'load'.\n");
+
+    free(fname); fname = NULL;
+    return 1;
   }
   return 0;
 }
@@ -49,15 +69,10 @@ int main(int argc, char **argv)
 int cmdsave(char *cmd)
 {
   if(strncmp(cmd, "save", 4) == 0) {
-    char *fname; int i, spaces = 0;
+    char *fname;
     fname = malloc((strlen(cmd) - 2) * sizeof(*fname));
 
-    for(i = 4; i < strlen(cmd); i++) {
-      if(i == 4) while(isspace(cmd[i])) { i++; spaces++;}
-      else if(!isalnum(cmd[i])) break;
-      fname[i - 4 - spaces] = cmd[i];
-    }
-    fname[i - 4 - spaces] = '\0';
+    filter(cmd, 4, fname);
 
     if(isalnum(fname[0]))
       write_history(fname);
@@ -86,36 +101,27 @@ void unrecognized(char *cmd)
 /*Check if user invoked cd command to ep1sh*/
 int cmdcd(char *wd, char *cmd)
 {
-  if(strncmp(cmd, "cd", 2) == 0) {
-    char *path; int i;
-    if(strlen(cmd) > 2 && cmd[3] != '/') {
-      char *cdarg; int spaces = 0;
-      cdarg = malloc((strlen(cmd) - 2) * sizeof(*cdarg));
+  if(strncmp(cmd, "cd", 2) == 0 && strlen(cmd) > 2) {
+    char *cdarg, *path;
 
-      for(i = 3; i < strlen(cmd); i++) {
-        if(i == 3) while(isspace(cmd[i])) { i++; spaces++;}
-        else if(isspace(cmd[i])) break;
-        cdarg[i - 3 - spaces] = cmd[i];
-      }
-      cdarg[i - 3 - spaces] = '\0';
+    cdarg = malloc((strlen(cmd) - 2) * sizeof(*cdarg));
+    filter(cmd, 3, cdarg);
 
+    if(cdarg[0] != '/') {
       path = malloc((strlen(wd) + strlen(cdarg) + 2) * sizeof(*path));
       strcpy(path, wd); strcat(path, "/"); strcat(path, cdarg);
-
       if(cdarg[0] == '\0' || chdir(path) != 0)
         printf("Bad argument for 'cd'.\n");
-
-      free(cdarg); cdarg = NULL;
     }
     else {
       path = malloc((strlen(cmd) - 2) * sizeof(*path));
-
-      for(i = 3; i < strlen(cmd); i++) path[i - 3] = cmd[i];
-      path[i] = '\0';
-
-      if(chdir(path) != 0) printf("Bad argument for 'cd'.\n");
+      filter(cmd, 3, path);
+      if(path[0] == '\0' || chdir(path) != 0)
+        printf("Bad argument for 'cd'.\n");
     }
+    free(cdarg); cdarg = NULL;
     free(path); path = NULL;
+
     return 1;
   }
   return 0;
@@ -164,6 +170,27 @@ void removenl(char *str)
         str[strlen(str) - 1] = '\0';
 }
 
+/*Filter command 'cmd' arguments 'arg',
+  starting from index 'begin', eliminating unnecessary spaces*/
+void filter(char *cmd, int begin, char *arg)
+{
+  int i, spaces = 0;
+  for(i = begin; i < strlen(cmd); i++) {
+    if(i == begin) while(isspace(cmd[i])) { i++; spaces++;}
+    if(!isalnum(cmd[i])) {
+      if(begin == 3 && cmd[i] == '.' && cmd[i + 1] == '.' &&
+        (cmd[i + 2] == '\0' || cmd[i + 2] == ' ')) {
+          arg[i - begin - spaces] = cmd[i]; i++;
+          arg[i - begin - spaces] = cmd[i];
+          continue;
+        }
+      break;
+    }
+    arg[i - begin - spaces] = cmd[i];
+  }
+  arg[i - begin - spaces] = '\0';
+}
+
 /*
 Notes:
 
@@ -176,5 +203,9 @@ com cada comando usando chdir() e getcwd(), respectivamente.
 
 3) função expand foi baseada no código da página da biblioteca GNU History
 e adaptada para o nosso uso.
+
+4) Não está sendo considerado que haverão diretórios e arquivos com espaços no
+nome. Os nomes também precisão ser inteiramente alfanuméricos.
+
 
 */
