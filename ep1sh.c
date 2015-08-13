@@ -62,7 +62,7 @@ int cmdshow(char *cmd)
     if(fine) {
       hlist = history_list();
       if(hlist)
-        for(i = 0; hlist[i]; i++)
+        for(i = 0; hlist[i] != NULL; i++)
           printf("%d: %s\n", i + history_base, hlist[i]->line);
     }
     else printf("Expected no argument for 'show'.\n");
