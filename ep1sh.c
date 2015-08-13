@@ -15,6 +15,7 @@ int cmdcd(char *, char *);
 int cmdexit(char *);
 int cmdsave(char *);
 int cmdload(char *);
+int cmdshow(char *);
 void unrecognized(char *);
 /*************/
 
@@ -38,9 +39,34 @@ int main(int argc, char **argv)
       else if(cmdcd(wd, cmd));
       else if(cmdexit(cmd)) exit = 1;
       else if(cmdsave(cmd));
+      else if(cmdload(cmd));
+      else if(cmdshow(cmd));
       else unrecognized(cmd);
     }
     else perror("Error (getcwd).\n");
+  }
+  return 0;
+}
+
+/*Shows commands in history list*/
+int cmdshow(char *cmd)
+{
+  if(strncmp(cmd, "show", 4) == 0) {
+    int fine = 1, i;
+    HIST_ENTRY **hlist;
+
+    for(i = 4; i < strlen(cmd); i++)
+      if(!isspace(cmd[i]))
+        fine = 0;
+
+    if(fine) {
+      hlist = history_list();
+      if(hlist)
+        for(i = 0; hlist[i]; i++)
+          printf("%d: %s\n", i + history_base, hlist[i]->line);
+    }
+    else printf("Expected no argument for 'show'.\n");
+    return 1;
   }
   return 0;
 }
@@ -205,7 +231,7 @@ com cada comando usando chdir() e getcwd(), respectivamente.
 e adaptada para o nosso uso.
 
 4) Não está sendo considerado que haverão diretórios e arquivos com espaços no
-nome. Os nomes também precisão ser inteiramente alfanuméricos.
+nome. Os nomes também devem ser inteiramente alfanuméricos.
 
 
 */
