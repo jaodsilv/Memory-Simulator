@@ -27,13 +27,11 @@ int main(int argc, char **argv)
   using_history();
   while(!exit){
     if(getcwd(wd, sizeof(wd)) != NULL) {
-      char *sh;
-      sh = malloc((3 + strlen(wd)) * sizeof(*sh));
+      char sh[1024];
       strcat(strcat(strcpy(sh, "["), wd), "] ");
-
       if((cmd = getcmd(cmd, sh)) == NULL) {
         printf("Expansion attempt has failed.\n");
-        free(sh); sh = NULL;
+        free(cmd); cmd = NULL;
         continue;
       }
 
@@ -42,7 +40,7 @@ int main(int argc, char **argv)
       else if(cmdexit(cmd)) exit = 1;
       else if(cmdshow(cmd));
       else unrecognized(cmd);
-      free(sh); sh = NULL;
+      free(cmd); cmd = NULL;
     }
     else perror("Error (getcwd).\n");
   }
@@ -128,10 +126,6 @@ int cmdls(char *cmd)
 /*Get user command*/
 char *getcmd(char *cmd, char *wd)
 {
-  if(cmd != NULL) {
-    free(cmd);
-    cmd = NULL;
-  }
   cmd = readline(wd);
   return (expand(cmd) != -1) ? cmd : NULL;
 }
@@ -146,7 +140,7 @@ int expand(char *cmd)
 
   if(result == 0 || result == 1) {
     add_history(expansion);
-    strncpy(cmd, expansion, sizeof(cmd) - 1);
+    strncpy(cmd, expansion, strlen(cmd) - 1);
   }
   free(expansion); expansion = NULL;
   return result;
