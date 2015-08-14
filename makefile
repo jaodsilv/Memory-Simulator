@@ -7,4 +7,5 @@ ep1sh.o: ep1sh.c
 clean:
 	rm -rf *.o
 	rm -rf *~
+	rm -rf a.out
 	rm ep1sh

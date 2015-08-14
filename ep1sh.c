@@ -3,20 +3,18 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <readline/readline.h>
 #include <readline/history.h>
 
 /*Prototypes*/
-void removenl(char *);
-void filter(char *, int, char *);
-int getcmd(char *);
+char *getcmd(char *, char *);
 int expand(char *);
 int cmdls(char *);
 int cmdcd(char *, char *);
 int cmdexit(char *);
-int cmdsave(char *);
-int cmdload(char *);
 int cmdshow(char *);
 void unrecognized(char *);
+void filter(char *, int, char *);
 /*************/
 
 /*ep1sh main loop.*/
@@ -24,27 +22,31 @@ int main(int argc, char **argv)
 {
   int exit = 0;
   char wd[256];
-  char cmd[256];
+  char *cmd = NULL;
 
   using_history();
   while(!exit){
     if(getcwd(wd, sizeof(wd)) != NULL) {
-      int result;
-      printf("[%s] ", wd);
+      char *sh;
+      sh = malloc((3 + strlen(wd)) * sizeof(*sh));
+      strcat(strcat(strcpy(sh, "["), wd), "] ");
 
-      if((result = getcmd(cmd)) == -1)
+      if((cmd = getcmd(cmd, sh)) == NULL) {
         printf("Expansion attempt has failed.\n");
+        free(sh); sh = NULL;
+        continue;
+      }
 
       if(cmdls(cmd));
       else if(cmdcd(wd, cmd));
       else if(cmdexit(cmd)) exit = 1;
-      else if(cmdsave(cmd));
-      else if(cmdload(cmd));
       else if(cmdshow(cmd));
       else unrecognized(cmd);
+      free(sh); sh = NULL;
     }
     else perror("Error (getcwd).\n");
   }
+  free(cmd); cmd = NULL;
   return 0;
 }
 
@@ -66,46 +68,6 @@ int cmdshow(char *cmd)
           printf("%d: %s\n", i + history_base, hlist[i]->line);
     }
     else printf("Expected no argument for 'show'.\n");
-    return 1;
-  }
-  return 0;
-}
-
-/*Loads history of a file named 'fname'*/
-int cmdload(char *cmd)
-{
-  if(strncmp(cmd, "load", 4) == 0) {
-    char *fname;
-    fname = malloc((strlen(cmd) - 2) * sizeof(*fname));
-
-    filter(cmd, 4, fname);
-
-    if(isalnum(fname[0]))
-      read_history(fname);
-    else
-      printf("Expected alphanumeric file name argument for 'load'.\n");
-
-    free(fname); fname = NULL;
-    return 1;
-  }
-  return 0;
-}
-
-/*Saves history in a file named 'fname'*/
-int cmdsave(char *cmd)
-{
-  if(strncmp(cmd, "save", 4) == 0) {
-    char *fname;
-    fname = malloc((strlen(cmd) - 2) * sizeof(*fname));
-
-    filter(cmd, 4, fname);
-
-    if(isalnum(fname[0]))
-      write_history(fname);
-    else
-      printf("Expected alphanumeric file name argument for 'save'.\n");
-
-    free(fname); fname = NULL;
     return 1;
   }
   return 0;
@@ -135,7 +97,7 @@ int cmdcd(char *wd, char *cmd)
 
     if(cdarg[0] != '/') {
       path = malloc((strlen(wd) + strlen(cdarg) + 2) * sizeof(*path));
-      strcpy(path, wd); strcat(path, "/"); strcat(path, cdarg);
+      strcat(strcat(strcpy(path, wd), "/"), cdarg);
       if(cdarg[0] == '\0' || chdir(path) != 0)
         printf("Bad argument for 'cd'.\n");
     }
@@ -164,12 +126,14 @@ int cmdls(char *cmd)
 }
 
 /*Get user command*/
-int getcmd(char *cmd)
+char *getcmd(char *cmd, char *wd)
 {
-  fflush(stdin);
-  fgets(cmd, 255, stdin);
-  removenl(cmd);
-  return expand(cmd);
+  if(cmd != NULL) {
+    free(cmd);
+    cmd = NULL;
+  }
+  cmd = readline(wd);
+  return (expand(cmd) != -1) ? cmd : NULL;
 }
 
 /*Expand the history or a previous command*/
@@ -185,15 +149,7 @@ int expand(char *cmd)
     strncpy(cmd, expansion, sizeof(cmd) - 1);
   }
   free(expansion); expansion = NULL;
-
   return result;
-}
-
-/*Remove final character \n from user command*/
-void removenl(char *str)
-{
-  if ((strlen(str) > 0) && (str[strlen(str) - 1] == '\n'))
-        str[strlen(str) - 1] = '\0';
 }
 
 /*Filter command 'cmd' arguments 'arg',
