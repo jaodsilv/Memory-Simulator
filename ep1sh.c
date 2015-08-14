@@ -29,6 +29,7 @@ int main(int argc, char **argv)
     if(getcwd(wd, sizeof(wd)) != NULL) {
       char sh[1024];
       strcat(strcat(strcpy(sh, "["), wd), "] ");
+
       if((cmd = getcmd(cmd, sh)) == NULL) {
         printf("Expansion attempt has failed.\n");
         free(cmd); cmd = NULL;
@@ -182,6 +183,12 @@ e adaptada para o nosso uso.
 
 4) Não está sendo considerado que haverão diretórios e arquivos com espaços no
 nome. Os nomes também devem ser inteiramente alfanuméricos.
+
+5) A função "readline" está causando vazamento de memória. Não foi encontrado
+nem na documentação e nem no google uma solução. Os ponteiros para a memória
+que deve ser desalocada, porém, são marcados como "ainda alcançáveis" no
+valgrind. Com uma query certa no google é fácil de encontrar outros usuários
+que tiveram este problema.
 
 
 */
