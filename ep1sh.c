@@ -12,9 +12,13 @@ int expand(char *);
 int cmdls(char *);
 int cmdcd(char *, char *);
 int cmdexit(char *);
+int cmdep(char *);
 int cmdshow(char *);
 void unrecognized(char *);
 void filter(char *, int, char *);
+int run(char **);
+char **getargs(char *);
+void freeargs(char **);
 /*************/
 
 /*ep1sh main loop.*/
@@ -38,8 +42,9 @@ int main(int argc, char **argv)
 
       if(cmdls(cmd));
       else if(cmdcd(wd, cmd));
-      else if(cmdexit(cmd)) exit = 1;
       else if(cmdshow(cmd));
+      else if(cmdep(cmd));
+      else if(cmdexit(cmd)) exit = 1;
       else unrecognized(cmd);
       free(cmd); cmd = NULL;
     }
@@ -47,6 +52,79 @@ int main(int argc, char **argv)
   }
   free(cmd); cmd = NULL;
   return 0;
+}
+
+/*Runs the simulator using the "./ep1 <args>" command*/
+int cmdep(char *cmd)
+{
+  if(strncmp(cmd, "./ep1", 5) == 0) {
+    char **args = NULL; int check = 0, i;
+
+    for(i = 5; i < strlen(cmd) && check == 0; i++)
+      if(cmd[i] != ' ' && cmd[i] != '\0')
+        check = 1;
+
+    if(strlen(cmd) < 6 || check == 0)
+      printf("Expected arguments for ./ep1.\n");
+    else if(check == 1 && ((args = getargs(cmd)) == NULL))
+      printf("Bad arguments for ./ep1.\n");
+    else if(check == 1 && (run(args) < 0)) {
+      /*if*/ printf("Error initializing ep1. Bad first argument.\n");
+    }
+    if(args != NULL) freeargs(args);
+    return 1;
+  }
+  return 0;
+}
+
+char **getargs(char *cmd)
+{
+  char **args;
+  int arg = 0, i, j;
+
+  args = malloc(3 * sizeof(*args));
+  args[0] = malloc(2 * sizeof(**args));
+  args[1] = malloc(64 * sizeof(**args));
+  args[2] = malloc(64 * sizeof(**args));
+
+  /*Get 1st argument*/
+  for(i = 5; isspace(cmd[i]); i++) continue;
+  for(j = 0; i < strlen(cmd) && !isspace(cmd[i]); i++) {
+    if(isdigit(cmd[i]) && j > 0) { arg = -1; break; }
+    else if(isdigit(cmd[i]) && j == 0 && cmd[i] >= '1' && cmd[i] <= '6') {
+      args[0][j] = cmd[i]; args[0][j + 1] = '\0'; arg++;
+      j++;
+    }
+  }
+  /*Get 2nd argument*/
+  if(arg == 1) {
+    while(isspace(cmd[i])) { i++; continue; }
+    for(j = 0; i < strlen(cmd) && !isspace(cmd[i]) && j < 64; i++, j++)
+      args[1][j] = cmd[i];
+    if(j < 64) { args[1][j] = '\0'; arg++; }
+    else arg = -1;
+  }
+  /*Get 3rd argument*/
+  if(arg == 2) {
+    while(isspace(cmd[i])) { i++; continue; }
+    for(j = 0; i < strlen(cmd) && !isspace(cmd[i]) && j < 64; i++, j++)
+      args[2][j] = cmd[i];
+    if(j < 64) { args[2][j] = '\0'; arg++; }
+    else arg = -1;
+  }
+
+  if(arg == 3) return args;
+  else { freeargs(args); return NULL; }
+}
+
+/*Frees the memory allocated by ep1 arguments*/
+void freeargs(char **args)
+{
+  int i;
+  for(i = 0; i < 3; i++) {
+    free(args[i]); args[i] = NULL;
+  }
+  free(args); args = NULL;
 }
 
 /*Shows commands in history list*/
