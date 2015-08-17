@@ -14,6 +14,7 @@ int cmdcd(char *, char *);
 int cmdexit(char *);
 int cmdep(char *);
 int cmdshow(char *);
+int cmdpwd(char *, char *);
 void unrecognized(char *);
 void filter(char *, int, char *);
 int run(char **);
@@ -29,7 +30,7 @@ int main(int argc, char **argv)
   char *cmd = NULL;
 
   using_history();
-  while(!exit){
+  while(!exit) {
     if(getcwd(wd, sizeof(wd)) != NULL) {
       char sh[1024];
       strcat(strcat(strcpy(sh, "["), wd), "] ");
@@ -45,6 +46,7 @@ int main(int argc, char **argv)
       else if(cmdshow(cmd));
       else if(cmdep(cmd));
       else if(cmdexit(cmd)) exit = 1;
+      else if(cmdpwd(cmd, wd));
       else unrecognized(cmd);
       free(cmd); cmd = NULL;
     }
@@ -195,8 +197,18 @@ int cmdcd(char *wd, char *cmd)
 /*Check if user invoked /bin/ls -l command to ep1sh*/
 int cmdls(char *cmd)
 {
-  if(strcmp(cmd, "/bin/ls -l") == 0) {
+  if(strncmp(cmd, "/bin/ls -l", 10) == 0) {
     if(system("/bin/ls -l") != 0) printf("Command not supported.\n");
+    return 1;
+  }
+  return 0;
+}
+
+/*Get and print the working directory*/
+int cmdpwd(char *cmd, char *wd)
+{
+  if(strncmp(cmd, "pwd", 3) == 0) {
+    printf("%s\n", wd);
     return 1;
   }
   return 0;
