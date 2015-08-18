@@ -70,79 +70,71 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
 
     while(!done) {
       if((c = fgetc(fptr)) == EOF) { done = 1; continue; }
-
-      /*Get Arrival*/
-      if(item  == 1) {
-        if(isdigit(c) || c == '.') {
-          tmp[i++] = c;
-          if(c == '.') dots++;
-          if(dots > 1) { free(process); return NULL; }
-        }
-        else if(isblank(c) && i > 0) {
-          tmp[i] = '\0'; i = 0; item = 2; dots = 0;
-          process[j].arrival = atof(tmp);
-          continue;
-        }
-        else { free(process); return NULL; }
-      }
-
-      /*Get name*/
-      if(item  == 2) {
-        if(!isspace(c)) tmp[i++] = c;
-        else if(isblank(c) && i > 0) {
-          tmp[i] = '\0'; i = 0; item = 3;
-          strcpy(process[j].name, tmp);
-          continue;
-        }
-        else { free(process); return NULL; }
-      }
-
-      /*Get duration*/
-      if(item  == 3) {
-        if(isdigit(c) || c == '.') {
-          tmp[i++] = c;
-          if(c == '.') dots++;
-          if(dots > 1) { free(process); return NULL; }
-        }
-        else if(isblank(c) && i > 0) {
-          tmp[i] = '\0'; i = 0; item = 4; dots = 0;
-          process[j].duration = atof(tmp);
-          continue;
-        }
-        else { free(process); return NULL; }
-      }
-
-      /*Get deadline*/
-      if(item  == 4) {
-        if(isdigit(c) || c == '.') {
-          tmp[i++] = c;
-          if(c == '.') dots++;
-          if(dots > 1) { free(process); return NULL; }
-        }
-        else if(isblank(c) && i > 0) {
-          tmp[i] = '\0'; i = 0; item = 5; dots = 0;
-          process[j].deadline = atof(tmp);
-          continue;
-        }
-        else { free(process); return NULL; }
-      }
-
-      /*Get Priority*/
-      if(item  == 5) {
-        if(isdigit(c) || c == '-') {
-          tmp[i++] = c;
-          if(c == '-') dots++;
-          if(dots > 1) { free(process); return NULL; }
-        }
-        else if(isspace(c) && i > 0) {
-          tmp[i] = '\0'; i = 0; item = 1; dots = 0; *total += 1;
-          process[j++].priority = atoi(tmp);
-          if(j == size / 2) {
-            process = realloc(process, (size * 2) * sizeof(*process));
-            size *= 2;
+      switch (item) {
+        case 1: /*Get Arrival*/
+          if(isdigit(c) || c == '.') {
+            tmp[i++] = c;
+            if(c == '.') dots++;
+            if(dots > 1) { free(process); return NULL; }
           }
-        }
-        else { free(process); return NULL; }
+          else if(isblank(c) && i > 0) {
+            tmp[i] = '\0'; i = 0; item = 2; dots = 0;
+            process[j].arrival = atof(tmp);
+            continue;
+          }
+          else { free(process); return NULL; }
+          break;
+        case 2: /*Get name*/
+          if(!isspace(c)) tmp[i++] = c;
+          else if(isblank(c) && i > 0) {
+            tmp[i] = '\0'; i = 0; item = 3;
+            strcpy(process[j].name, tmp);
+            continue;
+          }
+          else { free(process); return NULL; }
+          break;
+        case 3: /*Get duration*/
+          if(isdigit(c) || c == '.') {
+            tmp[i++] = c;
+            if(c == '.') dots++;
+            if(dots > 1) { free(process); return NULL; }
+          }
+          else if(isblank(c) && i > 0) {
+            tmp[i] = '\0'; i = 0; item = 4; dots = 0;
+            process[j].duration = atof(tmp);
+            continue;
+          }
+          else { free(process); return NULL; }
+          break;
+        case 4: /*Get deadline*/
+          if(isdigit(c) || c == '.') {
+            tmp[i++] = c;
+            if(c == '.') dots++;
+            if(dots > 1) { free(process); return NULL; }
+          }
+          else if(isblank(c) && i > 0) {
+            tmp[i] = '\0'; i = 0; item = 5; dots = 0;
+            process[j].deadline = atof(tmp);
+            continue;
+          }
+          else { free(process); return NULL; }
+          break;
+        case 5: /*Get Priority*/
+          if(isdigit(c) || c == '-') {
+            tmp[i++] = c;
+            if(c == '-') dots++;
+            if(dots > 1) { free(process); return NULL; }
+          }
+          else if(isspace(c) && i > 0) {
+            tmp[i] = '\0'; i = 0; item = 1; dots = 0; *total += 1;
+            process[j++].priority = atoi(tmp);
+            if(j == size / 2) {
+              process = realloc(process, (size * 2) * sizeof(*process));
+              size *= 2;
+            }
+          }
+          else { free(process); return NULL; }
+          break;
       }
     }
     return process = realloc(process, j * sizeof(*process));
