@@ -1,5 +1,5 @@
 ep1sh: ep1sh.o ep1.o
-	gcc -o ep1sh ep1sh.o ep1.o -lreadline
+	gcc -o ep1sh ep1sh.o ep1.o -lreadline -g
 
 ep1sh.o: ep1sh.c
 	gcc -c ep1sh.c -Wall -ansi

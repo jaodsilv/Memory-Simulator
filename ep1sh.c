@@ -12,12 +12,12 @@ int expand(char *);
 int cmdls(char *);
 int cmdcd(char *, char *);
 int cmdexit(char *);
-int cmdep(char *);
+int cmdep(char *, char *);
 int cmdshow(char *);
 int cmdpwd(char *, char *);
 void unrecognized(char *);
 void filter(char *, int, char *);
-int run(char **);
+int run(char **, char *);
 char **getargs(char *);
 void freeargs(char **);
 /*************/
@@ -42,9 +42,9 @@ int main(int argc, char **argv)
       }
 
       if(cmdls(cmd));
-      else if(cmdcd(wd, cmd));
+      else if(cmdcd(cmd, wd));
       else if(cmdshow(cmd));
-      else if(cmdep(cmd));
+      else if(cmdep(cmd, wd));
       else if(cmdexit(cmd)) exit = 1;
       else if(cmdpwd(cmd, wd));
       else unrecognized(cmd);
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 }
 
 /*Runs the simulator using the "./ep1 <args>" command*/
-int cmdep(char *cmd)
+int cmdep(char *cmd, char *wd)
 {
   if(strncmp(cmd, "./ep1", 5) == 0) {
     char **args = NULL; int check = 0, i;
@@ -70,7 +70,7 @@ int cmdep(char *cmd)
       printf("Expected arguments for ./ep1.\n");
     else if(check == 1 && ((args = getargs(cmd)) == NULL))
       printf("Bad arguments for ./ep1.\n");
-    else if(check == 1 && (run(args) < 0)) {
+    else if(check == 1 && (run(args, wd) < 0)) {
       /*if*/ printf("Error initializing ep1. Bad first argument.\n");
     }
     if(args != NULL) freeargs(args);
@@ -79,6 +79,7 @@ int cmdep(char *cmd)
   return 0;
 }
 
+/*Get arguments for ./ep1 to send them correctly*/
 char **getargs(char *cmd)
 {
   char **args;
@@ -101,17 +102,23 @@ char **getargs(char *cmd)
   /*Get 2nd argument*/
   if(arg == 1) {
     while(isspace(cmd[i])) { i++; continue; }
-    for(j = 0; i < strlen(cmd) && !isspace(cmd[i]) && j < 64; i++, j++)
-      args[1][j] = cmd[i];
-    if(j < 64) { args[1][j] = '\0'; arg++; }
+    if(cmd[i] != '\0') {
+      for(j = 0; i < strlen(cmd) && !isspace(cmd[i]) && j < 64; i++, j++)
+        args[1][j] = cmd[i];
+      if(j < 64) { args[1][j] = '\0'; arg++; }
+      else arg = -1;
+    }
     else arg = -1;
   }
   /*Get 3rd argument*/
   if(arg == 2) {
     while(isspace(cmd[i])) { i++; continue; }
-    for(j = 0; i < strlen(cmd) && !isspace(cmd[i]) && j < 64; i++, j++)
-      args[2][j] = cmd[i];
-    if(j < 64) { args[2][j] = '\0'; arg++; }
+    if(cmd[i] != '\0') {
+      for(j = 0; i < strlen(cmd) && !isspace(cmd[i]) && j < 64; i++, j++)
+        args[2][j] = cmd[i];
+      if(j < 64) { args[2][j] = '\0'; arg++; }
+      else arg = -1;
+    }
     else arg = -1;
   }
 
@@ -166,7 +173,7 @@ void unrecognized(char *cmd)
 }
 
 /*Check if user invoked cd command to ep1sh*/
-int cmdcd(char *wd, char *cmd)
+int cmdcd(char *cmd, char *wd)
 {
   if(strncmp(cmd, "cd", 2) == 0 && strlen(cmd) > 2) {
     char *cdarg, *path;
