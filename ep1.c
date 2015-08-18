@@ -84,7 +84,6 @@ void removenl(char *str)
     str[strlen(str) - 1] = '\0';
 }
 
-
  /*Frees buffer memory*/
 void freebuff(char **buff, unsigned int *bsizeptr)
 {

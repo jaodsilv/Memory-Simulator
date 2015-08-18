@@ -265,6 +265,10 @@ void filter(char *cmd, int begin, char *arg)
           arg[i - begin - spaces] = cmd[i];
           continue;
         }
+      else if(begin == 3 && cmd[i] == '/') {
+        arg[i - begin - spaces] = cmd[i];
+        continue;
+      }
       break;
     }
     arg[i - begin - spaces] = cmd[i];
