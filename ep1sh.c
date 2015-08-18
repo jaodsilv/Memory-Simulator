@@ -301,4 +301,6 @@ que tiveram este problema.
 6) Para usar o ep1, os arquivos de trace devem, obrigatoriamente, estarem no
 diretório inputs/
 
+7) Os arquivos de trace (input) precisam estar com cada item separado de apenas
+UM espaço (' ') e precisa ter uma linha extra vazia no final.
 */
