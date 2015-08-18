@@ -49,7 +49,10 @@ int run(char **argv, char *wd)
       free(process); process = NULL;
     }
   }
-  else printf("\nError reading file. Make sure it is written in expected format.\n");
+  else {
+    printf("\nError reading file. Make sure it is written in expected ");
+    printf("format and you are executing ep1 command from the right folder.\n");
+  }
   return 0;
 }
 
