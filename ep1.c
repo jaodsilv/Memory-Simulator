@@ -52,10 +52,7 @@ char **readtfile(char **buff, unsigned int *bsizeptr, char *wd, char *tfile)
   FILE *fptr;
   char input[256];
 
-  strcpy(input, wd);
-  strcat(input, "/inputs/");
-  strcat(input, tfile);
-
+  strcat(strcat(strcpy(input, wd), "/inputs/"), tfile);
   if((fptr = fopen(input, "r")) != NULL) {
     char str[128]; unsigned int i = 0;
 
@@ -69,9 +66,7 @@ char **readtfile(char **buff, unsigned int *bsizeptr, char *wd, char *tfile)
         *bsizeptr *= 2;
       }
     }
-
     while(i < *bsizeptr) buff[i++] = NULL;
-
     fclose(fptr);
     return buff;
   }
