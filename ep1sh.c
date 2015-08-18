@@ -85,10 +85,11 @@ char **getargs(char *cmd)
   char **args;
   int arg = 0, i, j;
 
-  args = malloc(3 * sizeof(*args));
+  args = malloc(4 * sizeof(*args));
   args[0] = malloc(2 * sizeof(**args));
   args[1] = malloc(64 * sizeof(**args));
   args[2] = malloc(64 * sizeof(**args));
+  args[3] = NULL;
 
   /*Get 1st argument*/
   for(i = 5; isspace(cmd[i]); i++) continue;
@@ -121,8 +122,16 @@ char **getargs(char *cmd)
     }
     else arg = -1;
   }
+  /*Get the optional 4th argument*/
+  if(arg == 3) {
+    while(isspace(cmd[i])) { i++; continue; }
+    if(cmd[i] == 'd' && (cmd[i + 1] == '\0' || isspace(cmd[i + 1]))) {
+      args[3] = malloc(2 * sizeof(**args));
+      args[3][0] = 'd'; args[3][1] = '\0'; arg++;
+    }
+  }
 
-  if(arg == 3) return args;
+  if(arg == 3 || arg == 4) return args;
   else { freeargs(args); return NULL; }
 }
 

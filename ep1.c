@@ -10,6 +10,7 @@ int run(char **argv, char *wd)
 
   printf("Run argument 2 = %s\n", argv[1]);
   printf("Run argument 3 = %s\n", argv[2]);
+  printf("Run argument 4 = %s\n", argv[3]);
 
   buff = readtfile(buff, bsizeptr, wd, argv[1]);
 
