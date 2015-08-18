@@ -70,9 +70,7 @@ int cmdep(char *cmd, char *wd)
       printf("Expected arguments for ./ep1.\n");
     else if(check == 1 && ((args = getargs(cmd)) == NULL))
       printf("Bad arguments for ./ep1.\n");
-    else if(check == 1 && (run(args, wd) < 0)) {
-      /*if*/ printf("Error initializing ep1. Bad first argument.\n");
-    }
+    else if(check == 1 && run(args, wd) < 0);
     if(args != NULL) freeargs(args);
     return 1;
   }
