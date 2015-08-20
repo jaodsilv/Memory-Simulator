@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
 #include "ep1.h"
 
 int run(char **argv, char *wd)
@@ -21,6 +22,10 @@ int run(char **argv, char *wd)
   }*/
   if(process != NULL) {
     unsigned int scheduler;
+    pthread_t *threads;
+
+    threads = malloc((*total + 1) * sizeof(*threads));
+
     switch(scheduler = atoi(argv[0])) {
       case FCFS:
         /*do FCFS*/
@@ -29,6 +34,7 @@ int run(char **argv, char *wd)
       case SJF:
         /*do SJF*/
         printf("2. SJF\n");
+        initiate_sjf(threads, process, total);
         break;
       case SRTN:
         /*do SRTN*/
@@ -84,6 +90,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
           }
           else { free(process); return NULL; }
           break;
+
         case 2: /*Get name*/
           if(!isspace(c)) tmp[i++] = c;
           else if(isblank(c) && i > 0) {
@@ -93,6 +100,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
           }
           else { free(process); return NULL; }
           break;
+
         case 3: /*Get duration*/
           if(isdigit(c) || c == '.') {
             tmp[i++] = c;
@@ -106,6 +114,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
           }
           else { free(process); return NULL; }
           break;
+
         case 4: /*Get deadline*/
           if(isdigit(c) || c == '.') {
             tmp[i++] = c;
@@ -119,6 +128,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
           }
           else { free(process); return NULL; }
           break;
+
         case 5: /*Get Priority*/
           if(isdigit(c) || c == '-') {
             tmp[i++] = c;
@@ -127,16 +137,20 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
           }
           else if(isspace(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 1; dots = 0; *total += 1;
-            process[j++].priority = atoi(tmp);
+            process[j].priority = atoi(tmp);
+            process[j++].coordinator = False;
             if(j == size / 2) {
               process = realloc(process, (size * 2) * sizeof(*process));
               size *= 2;
             }
           }
-          else { free(process); return NULL; }
-          break;
+        else { free(process); return NULL; }
+        break;
       }
     }
+    process[j].coordinator = True;
+    process[j].total = *total;
+    process[j++].process = process;
     return process = realloc(process, j * sizeof(*process));
   }
   else {
@@ -145,24 +159,43 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
   }
 }
 
-/*Remove final character \n from string 'str'*/
-void removenl(char *str)
-{
-  if((strlen(str) > 0) && (str[strlen(str) - 1] == '\n'))
-    str[strlen(str) - 1] = '\0';
-}
-
- /*Frees buffer memory*/
-void freebuff(char **buff, unsigned int *bsizeptr)
-{
-  unsigned int i;
-  for(i = 0; i < *bsizeptr; i++) {
-    free(buff[i]); buff[i] = NULL;
-  }
-  free(buff); buff = NULL;
-}
-
+/*Checks if the character is a space or tab*/
 int isblank(char c)
 {
   return c == ' ' || c == '\t';
+}
+
+/*Initiate threads to run SJF scheduling*/
+void initiate_sjf(pthread_t *threads, Process *process, unsigned int *total)
+{
+  unsigned int i;
+  for(i = 0; i <= *total; i++) {
+    if(pthread_create(&threads[i], NULL, sjf, &process[i])) {
+      printf("Error creating thread.\n");
+      return;
+    }
+  }
+  for(i = 0; i <= *total; i++) {
+    if(pthread_join(threads[i], NULL)) {
+      printf("Error joining process thread.\n");
+      return;
+    }
+  }
+}
+
+/*Shortest Job First*/
+void *sjf(void *args)
+{
+  Process *process = ((Process*) args);
+
+	if(process->coordinator)
+	{
+    printf("Coordinator: Total = %u  Coord? %d  process0 = %s\n", process->total, process->coordinator, process->process[0].name);
+	}
+	else
+	{
+    printf("%s: Arrival %f, Duration %f, Deadline %f, Priority %d Coord? %d\n", process->name, process->arrival, process->duration, process->deadline, process->priority, process->coordinator);
+	}
+
+	return NULL;
 }
