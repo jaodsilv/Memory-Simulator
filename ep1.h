@@ -18,11 +18,12 @@ typedef struct process {
   int   priority;          /*Priority. An integer in the range [-20, 19]*/
   /*Used only by the coordinator*/
   unsigned int total;      /*Total number of processes running*/
+  boolean paramd;          /*Register if the 4th optional parameter was passed*/
   struct process *process; /*All the processes*/
 } Process;
 
 int run(char **, char *);
-Process *readtfile(Process *, char *, char *, unsigned int *);
+Process *readtfile(Process *, char *, char *, unsigned int *, char *);
 int isblank(char c);
 
 /*SJF*/

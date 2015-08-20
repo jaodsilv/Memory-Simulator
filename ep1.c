@@ -15,7 +15,7 @@ int run(char **argv, char *wd)
   printf("Run argument 3 = %s\n", argv[2]);
   printf("Run argument 4 = %s\n", argv[3]);
 
-  process = readtfile(process, wd, argv[1], total);
+  process = readtfile(process, wd, argv[1], total, argv[3]);
   /*Uncomment the code below and declare an 'unsigned int i' to see stored data*/
   /*for(i = 0; i < *total; i++) {
     printf("Process %d:\n\tArrival = %f\n\tname = %s\n\tDuration = %f\n\tDeadline = %f\n\tPriority = %d\n\n", i+1, process[i].arrival, process[i].name, process[i].duration, process[i].deadline, process[i].priority);
@@ -64,7 +64,7 @@ int run(char **argv, char *wd)
 
 /*Read the trace file 'tfile' and store its content in the array 'process',
   creating process "objects"*/
-Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
+Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total, char *paramd)
 {
   FILE *fptr;
   char input[256];
@@ -150,6 +150,8 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total)
     }
     process[j].coordinator = True;
     process[j].total = *total;
+    if(paramd != NULL) process[j].paramd = True;
+    else process[j].paramd = False;
     process[j++].process = process;
     return process = realloc(process, j * sizeof(*process));
   }
@@ -190,7 +192,7 @@ void *sjf(void *args)
 
 	if(process->coordinator)
 	{
-    printf("Coordinator: Total = %u  Coord? %d  process0 = %s\n", process->total, process->coordinator, process->process[0].name);
+    printf("Coordinator: Total = %u  Coord? %d  process0 = %s paramd? %d\n", process->total, process->coordinator, process->process[0].name, process->paramd);
 	}
 	else
 	{
