@@ -198,11 +198,11 @@ void *sjf(void *args)
 
 	if(process->coordinator) {
     /*printf("Coordinator: Total = %u  Coord? %d  process0 = %s paramd? %d\n", process->total, process->coordinator, process->process[0].name, process->paramd);*/
-    unsigned int cores, cfree, count;
+    unsigned int cores, available_cores, count;
     clock_t start = clock();
     Core *core;
 
-    cores = cfree = sysconf(_SC_NPROCESSORS_ONLN);
+    cores = available_cores = sysconf(_SC_NPROCESSORS_ONLN);
     core = malloc(cores * sizeof(*core));
     for(count = 0; count < cores; count++) {
       core[count].available = True;
@@ -215,9 +215,14 @@ void *sjf(void *args)
 
       fetchprocess(process->process, process->total, start);
       next = select_sjf(process->process, process->total, start);
-      if(next != NULL && cfree > 0) {
+      if(next != NULL && available_cores > 0) {
+        unsigned int i;
 
-        cfree--;
+        use_core(next, core, cores);
+        for(i=0;i<cores;i++) {
+          printf("Core[%d] available? %d  process = %p\n", i+1, core[i].available, core[i].process);
+        }
+        available_cores--;
         count++;
         next->working = True;
       }
@@ -233,6 +238,22 @@ void *sjf(void *args)
 
 	return NULL;
 }
+
+/*Assigns a process to a core*/
+void use_core(Process *process, Core *core, unsigned int cores)
+{
+  unsigned int i = 0;
+  while(i < cores) {
+    if(core[i].available) {
+      core[i].available = False;
+      core[i].process = process;
+      break;
+    }
+    else i++;
+  }
+}
+
+
 
 /*Look up for new processes*/
 void fetchprocess(Process *process, unsigned int total, clock_t start)

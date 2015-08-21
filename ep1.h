@@ -36,6 +36,7 @@ typedef struct core {
 int run(char **, char *);
 Process *readtfile(Process *, char *, char *, unsigned int *, char *);
 void fetchprocess(Process *, unsigned int, clock_t);
+void use_core(Process *, Core *, unsigned int);
 
 /*Helper functions*/
 int isblank(char c);
