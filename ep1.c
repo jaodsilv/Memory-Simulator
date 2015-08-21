@@ -143,6 +143,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total,
             process[j].priority = atoi(tmp);
             process[j].arrived = False;
             process[j].done = False;
+            process[j].working = False;
             process[j++].coordinator = False;
             if(j == size / 2) {
               process = realloc(process, (size * 2) * sizeof(*process));
@@ -197,20 +198,28 @@ void *sjf(void *args)
 
 	if(process->coordinator) {
     /*printf("Coordinator: Total = %u  Coord? %d  process0 = %s paramd? %d\n", process->total, process->coordinator, process->process[0].name, process->paramd);*/
-    unsigned int cores, cfree, *core, count;
+    unsigned int cores, cfree, count;
     clock_t start = clock();
+    Core *core;
 
     cores = cfree = sysconf(_SC_NPROCESSORS_ONLN);
     core = malloc(cores * sizeof(*core));
-    for(count = 0; count < cores; count++) core[count] = !Busy;
+    for(count = 0; count < cores; count++) {
+      core[count].available = True;
+      core[count].process = NULL;
+    }
 
     count = 0;
     while(count != process->total) {
       Process *next = NULL;
-      next = fetchprocess(process->process, process->total, start);
-      if(next != NULL) {
+
+      fetchprocess(process->process, process->total, start);
+      next = select_sjf(process->process, process->total, start);
+      if(next != NULL && cfree > 0) {
+
+        cfree--;
         count++;
-        printf("%s has arrived\n", next->name);
+        next->working = True;
       }
     }
 
@@ -225,8 +234,8 @@ void *sjf(void *args)
 	return NULL;
 }
 
-/*Checks if a new process has arrived.*/
-Process *fetchprocess(Process *process, unsigned int total, clock_t start)
+/*Look up for new processes*/
+void fetchprocess(Process *process, unsigned int total, clock_t start)
 {
   unsigned int i;
   float sec = ((float)(clock() - start)) / CLOCKS_PER_SEC;
@@ -234,8 +243,21 @@ Process *fetchprocess(Process *process, unsigned int total, clock_t start)
   for(i = 0; i < total; i++)
     if(sec >= process[i].arrival && !process[i].arrived) {
       process[i].arrived = True;
-      return &process[i];
+      printf("%s has arrived\n", process[i].name);
+    }
+}
+
+/*Selects the shortest process */
+Process *select_sjf(Process *process, unsigned int total, clock_t start)
+{
+  unsigned int i;
+  Process *next = NULL;
+
+  for(i = 0; i < total; i++)
+    if(process[i].arrived && !process[i].working && !process[i].done) {
+      if(next == NULL) next = &process[i];
+      else if(process[i].duration < next->duration) next = &process[i];
     }
 
-  return NULL;
+  return next;
 }
