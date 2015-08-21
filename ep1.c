@@ -173,21 +173,19 @@ int isblank(char c)
   return c == ' ' || c == '\t';
 }
 
-/*Initiate threads to run SJF scheduling*/
-void initiate_sjf(pthread_t *threads, Process *process, unsigned int *total)
+/*Assigns a process to a core*/
+void use_core(Process *process, Core *core, unsigned int cores)
 {
-  unsigned int i;
-  for(i = 0; i <= *total; i++) {
-    if(pthread_create(&threads[i], NULL, sjf, &process[i])) {
-      printf("Error creating thread.\n");
-      return;
+  unsigned int i = 0;
+  while(i < cores) {
+    if(core[i].available) {
+      core[i].available = False;
+      core[i].process = process;
+      core[i].process->working = True;
+      printf("Process '%s' assigned to core %d\n", core[i].process->name, i+1);
+      break;
     }
-  }
-  for(i = 0; i <= *total; i++) {
-    if(pthread_join(threads[i], NULL)) {
-      printf("Error joining process thread.\n");
-      return;
-    }
+    else i++;
   }
 }
 
@@ -216,13 +214,8 @@ void *sjf(void *args)
       fetchprocess(process->process, process->total, start);
       next = select_sjf(process->process, process->total, start);
       if(next != NULL && available_cores > 0) {
-        unsigned int i;
+        use_core(next, core, cores); available_cores--;
 
-        use_core(next, core, cores);
-        for(i=0;i<cores;i++) {
-          printf("Core[%d] available? %d  process = %p\n", i+1, core[i].available, core[i].process);
-        }
-        available_cores--;
         count++;
         next->working = True;
       }
@@ -239,21 +232,23 @@ void *sjf(void *args)
 	return NULL;
 }
 
-/*Assigns a process to a core*/
-void use_core(Process *process, Core *core, unsigned int cores)
+/*Initiate threads to run SJF scheduling*/
+void initiate_sjf(pthread_t *threads, Process *process, unsigned int *total)
 {
-  unsigned int i = 0;
-  while(i < cores) {
-    if(core[i].available) {
-      core[i].available = False;
-      core[i].process = process;
-      break;
+  unsigned int i;
+  for(i = 0; i <= *total; i++) {
+    if(pthread_create(&threads[i], NULL, sjf, &process[i])) {
+      printf("Error creating thread.\n");
+      return;
     }
-    else i++;
+  }
+  for(i = 0; i <= *total; i++) {
+    if(pthread_join(threads[i], NULL)) {
+      printf("Error joining process thread.\n");
+      return;
+    }
   }
 }
-
-
 
 /*Look up for new processes*/
 void fetchprocess(Process *process, unsigned int total, clock_t start)
