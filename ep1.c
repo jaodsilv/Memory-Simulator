@@ -3,6 +3,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <time.h>
 #include "ep1.h"
 
 int run(char **argv, char *wd)
@@ -52,6 +54,7 @@ int run(char **argv, char *wd)
         /*do RRTS*/
         printf("6. RRTS\n");
         break;
+      free(threads); threads = NULL;
       free(process); process = NULL;
     }
   }
@@ -138,6 +141,8 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total,
           else if(isspace(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 1; dots = 0; *total += 1;
             process[j].priority = atoi(tmp);
+            process[j].arrived = False;
+            process[j].done = False;
             process[j++].coordinator = False;
             if(j == size / 2) {
               process = realloc(process, (size * 2) * sizeof(*process));
@@ -190,14 +195,47 @@ void *sjf(void *args)
 {
   Process *process = ((Process*) args);
 
-	if(process->coordinator)
-	{
-    printf("Coordinator: Total = %u  Coord? %d  process0 = %s paramd? %d\n", process->total, process->coordinator, process->process[0].name, process->paramd);
-	}
-	else
-	{
-    printf("%s: Arrival %f, Duration %f, Deadline %f, Priority %d Coord? %d\n", process->name, process->arrival, process->duration, process->deadline, process->priority, process->coordinator);
-	}
+	if(process->coordinator) {
+    /*printf("Coordinator: Total = %u  Coord? %d  process0 = %s paramd? %d\n", process->total, process->coordinator, process->process[0].name, process->paramd);*/
+    unsigned int cores, cfree, *core, count;
+    clock_t start = clock();
+
+    cores = cfree = sysconf(_SC_NPROCESSORS_ONLN);
+    core = malloc(cores * sizeof(*core));
+    for(count = 0; count < cores; count++) core[count] = !Busy;
+
+    count = 0;
+    while(count != process->total) {
+      Process *next = NULL;
+      next = fetchprocess(process->process, process->total, start);
+      if(next != NULL) {
+        count++;
+        printf("%s has arrived\n", next->name);
+      }
+    }
+
+    free(core); core = NULL;
+  }
+	else {
+    /*printf("%s: Arrival %f, Duration %f, Deadline %f, Priority %d Coord? %d\n", process->name, process->arrival, process->duration, process->deadline, process->priority, process->coordinator);*/
+
+
+  }
 
 	return NULL;
+}
+
+/*Checks if a new process has arrived.*/
+Process *fetchprocess(Process *process, unsigned int total, clock_t start)
+{
+  unsigned int i;
+  float sec = ((float)(clock() - start)) / CLOCKS_PER_SEC;
+
+  for(i = 0; i < total; i++)
+    if(sec >= process[i].arrival && !process[i].arrived) {
+      process[i].arrived = True;
+      return &process[i];
+    }
+
+  return NULL;
 }
