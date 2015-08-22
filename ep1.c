@@ -245,7 +245,13 @@ unsigned int finished_processes(Process *process, unsigned int total)
   for(i = 0; i < total; i++) {
     /*Mutex to read 'done' safely*/
     pthread_mutex_lock(&(process[i].mutex));
-    if(process[i].done) count++;
+    if(process[i].done) {
+      count++;
+      if(process[i].working) {
+        process[i].working = False;
+        printf("Must print the contents of the output for this process here. Substitute this message.\n");
+      }
+    }
     pthread_mutex_unlock(&(process[i].mutex));
   }
   return count;
@@ -343,7 +349,7 @@ void fetch_process(Process *process, unsigned int total)
     if(sec >= process[i].arrival && !process[i].arrived) {
       process[i].arrived = True;
       sem_post(&(process[i].next_stage));
-      printf("%s has arrived\n", process[i].name);
+      printf("%s has arrived (trace file line %u)\n", process[i].name, i + 1);
     }
 }
 
