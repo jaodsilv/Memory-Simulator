@@ -7,19 +7,19 @@
 #include <readline/history.h>
 
 /*Prototypes*/
-char *getcmd(char *, char *);
+char *get_cmd(char *, char *);
 int expand(char *);
-int cmdls(char *);
-int cmdcd(char *, char *);
-int cmdexit(char *);
-int cmdep(char *, char *);
-int cmdshow(char *);
-int cmdpwd(char *, char *);
+int cmd_ls(char *);
+int cmd_cd(char *, char *);
+int cmd_exit(char *);
+int cmd_ep(char *, char *);
+int cmd_show(char *);
+int cmd_pwd(char *, char *);
 void unrecognized(char *);
 void filter(char *, int, char *);
 int run(char **, char *);
-char **getargs(char *);
-void freeargs(char **);
+char **get_args(char *);
+void free_args(char **);
 /*************/
 
 /*ep1sh main loop.*/
@@ -35,18 +35,18 @@ int main(int argc, char **argv)
       char sh[1024];
       strcat(strcat(strcpy(sh, "["), wd), "] ");
 
-      if((cmd = getcmd(cmd, sh)) == NULL) {
+      if((cmd = get_cmd(cmd, sh)) == NULL) {
         printf("Expansion attempt has failed.\n");
         free(cmd); cmd = NULL;
         continue;
       }
 
-      if(cmdls(cmd));
-      else if(cmdcd(cmd, wd));
-      else if(cmdshow(cmd));
-      else if(cmdep(cmd, wd));
-      else if(cmdexit(cmd)) exit = 1;
-      else if(cmdpwd(cmd, wd));
+      if(cmd_ls(cmd));
+      else if(cmd_cd(cmd, wd));
+      else if(cmd_show(cmd));
+      else if(cmd_ep(cmd, wd));
+      else if(cmd_exit(cmd)) exit = 1;
+      else if(cmd_pwd(cmd, wd));
       else unrecognized(cmd);
       free(cmd); cmd = NULL;
     }
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 }
 
 /*Runs the simulator using the "./ep1 <args>" command*/
-int cmdep(char *cmd, char *wd)
+int cmd_ep(char *cmd, char *wd)
 {
   if(strncmp(cmd, "./ep1", 5) == 0) {
     char **args = NULL; int check = 0, i;
@@ -68,17 +68,17 @@ int cmdep(char *cmd, char *wd)
 
     if(strlen(cmd) < 6 || check == 0)
       printf("Expected arguments for ./ep1.\n");
-    else if(check == 1 && ((args = getargs(cmd)) == NULL))
+    else if(check == 1 && ((args = get_args(cmd)) == NULL))
       printf("Bad arguments for ./ep1.\n");
     else if(check == 1 && run(args, wd) < 0);
-    if(args != NULL) freeargs(args);
+    if(args != NULL) free_args(args);
     return 1;
   }
   return 0;
 }
 
 /*Get arguments for ./ep1 to send them correctly*/
-char **getargs(char *cmd)
+char **get_args(char *cmd)
 {
   char **args;
   int arg = 0, i, j;
@@ -130,11 +130,11 @@ char **getargs(char *cmd)
   }
 
   if(arg == 3 || arg == 4) return args;
-  else { freeargs(args); return NULL; }
+  else { free_args(args); return NULL; }
 }
 
 /*Frees the memory allocated by ep1 arguments*/
-void freeargs(char **args)
+void free_args(char **args)
 {
   int i;
   for(i = 0; i < 3; i++) {
@@ -144,7 +144,7 @@ void freeargs(char **args)
 }
 
 /*Shows commands in history list*/
-int cmdshow(char *cmd)
+int cmd_show(char *cmd)
 {
   if(strncmp(cmd, "show", 4) == 0) {
     int fine = 1, i;
@@ -167,7 +167,7 @@ int cmdshow(char *cmd)
 }
 
 /*Terminates ep1sh session*/
-int cmdexit(char *cmd)
+int cmd_exit(char *cmd)
 {
   if(strcmp(cmd, "exit") == 0 && strlen(cmd) == 4) return 1;
   return 0;
@@ -180,7 +180,7 @@ void unrecognized(char *cmd)
 }
 
 /*Check if user invoked cd command to ep1sh*/
-int cmdcd(char *cmd, char *wd)
+int cmd_cd(char *cmd, char *wd)
 {
   if(strncmp(cmd, "cd", 2) == 0 && strlen(cmd) > 2) {
     char *cdarg, *path;
@@ -209,7 +209,7 @@ int cmdcd(char *cmd, char *wd)
 }
 
 /*Check if user invoked /bin/ls -l command to ep1sh*/
-int cmdls(char *cmd)
+int cmd_ls(char *cmd)
 {
   if(strncmp(cmd, "/bin/ls -l", 10) == 0) {
     if(system("/bin/ls -l") != 0) printf("Command not supported.\n");
@@ -219,7 +219,7 @@ int cmdls(char *cmd)
 }
 
 /*Get and print the working directory*/
-int cmdpwd(char *cmd, char *wd)
+int cmd_pwd(char *cmd, char *wd)
 {
   if(strncmp(cmd, "pwd", 3) == 0) {
     printf("%s\n", wd);
@@ -229,7 +229,7 @@ int cmdpwd(char *cmd, char *wd)
 }
 
 /*Get user command*/
-char *getcmd(char *cmd, char *wd)
+char *get_cmd(char *cmd, char *wd)
 {
   cmd = readline(wd);
   return (expand(cmd) != -1) ? cmd : NULL;

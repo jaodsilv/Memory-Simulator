@@ -38,15 +38,15 @@ clock_t start;
 
 /*Simulator general functions*/
 int run(char **, char *);
-Process *readtfile(Process *, char *, char *, unsigned int *, char *);
+Process *read_trace_file(Process *, char *, char *, unsigned int *, char *);
 void initialize_cores(Core *, unsigned int);
-void fetchprocess(Process *, unsigned int);
+void fetch_process(Process *, unsigned int);
 void use_core(Process *, Core *, unsigned int);
 unsigned int finished_processes(Process *, unsigned int);
 unsigned int check_cores_available(Core *, unsigned int);
 
 /*Helper functions*/
-int isblank(char c);
+int is_blank(char c);
 
 /*SJF-specific functions*/
 void initiate_sjf(pthread_t *, Process *, unsigned int *);

@@ -19,7 +19,7 @@ int run(char **argv, char *wd)
   printf("Run argument 3 = %s\n", argv[2]);
   printf("Run argument 4 = %s\n", argv[3]);
 
-  process = readtfile(process, wd, argv[1], total, argv[3]);
+  process = read_trace_file(process, wd, argv[1], total, argv[3]);
 
   /*Initialize mutex devices*/
   for(i = 0; i < *total; i++) {
@@ -97,7 +97,7 @@ int run(char **argv, char *wd)
 
 /*Read the trace file 'tfile' and store its content in the array 'process',
   creating process "objects"*/
-Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total, char *paramd)
+Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *total, char *paramd)
 {
   FILE *fptr;
   char input[256];
@@ -116,7 +116,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total,
             if(c == '.') dots++;
             if(dots > 1) { free(process); return NULL; }
           }
-          else if(isblank(c) && i > 0) {
+          else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 2; dots = 0;
             process[j].arrival = atof(tmp);
             continue;
@@ -126,7 +126,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total,
 
         case 2: /*Get name*/
           if(!isspace(c)) tmp[i++] = c;
-          else if(isblank(c) && i > 0) {
+          else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 3;
             strcpy(process[j].name, tmp);
             continue;
@@ -140,7 +140,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total,
             if(c == '.') dots++;
             if(dots > 1) { free(process); return NULL; }
           }
-          else if(isblank(c) && i > 0) {
+          else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 4; dots = 0;
             process[j].duration = atof(tmp);
             continue;
@@ -154,7 +154,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total,
             if(c == '.') dots++;
             if(dots > 1) { free(process); return NULL; }
           }
-          else if(isblank(c) && i > 0) {
+          else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 5; dots = 0;
             process[j].deadline = atof(tmp);
             continue;
@@ -198,7 +198,7 @@ Process *readtfile(Process *process, char *wd, char *tfile, unsigned int *total,
 }
 
 /*Checks if the character is a space or tab*/
-int isblank(char c)
+int is_blank(char c)
 {
   return c == ' ' || c == '\t';
 }
@@ -278,7 +278,7 @@ void *sjf(void *args)
       Process *next = NULL;
 
       available_cores = check_cores_available(core, cores);
-      fetchprocess(process->process, process->total);
+      fetch_process(process->process, process->total);
       next = select_sjf(process->process, process->total);
       if(next != NULL && available_cores > 0) use_core(next, core, cores);
       count = finished_processes(process->process, process->total);
@@ -334,7 +334,7 @@ void do_task(Process *process)
 }
 
 /*Look up for new processes*/
-void fetchprocess(Process *process, unsigned int total)
+void fetch_process(Process *process, unsigned int total)
 {
   unsigned int i;
   float sec = ((float)(clock() - start)) / CLOCKS_PER_SEC;
