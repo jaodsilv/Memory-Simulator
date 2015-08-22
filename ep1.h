@@ -38,8 +38,9 @@ typedef struct core {
 int run(char **, char *);
 Process *readtfile(Process *, char *, char *, unsigned int *, char *);
 void fetchprocess(Process *, unsigned int, clock_t);
-unsigned int use_core(Process *, Core *, unsigned int);
-unsigned int finished_processes(Process *process, unsigned int total);
+void use_core(Process *, Core *, unsigned int);
+unsigned int finished_processes(Process *, unsigned int);
+unsigned int check_cores_available(Core *, unsigned int);
 
 /*Helper functions*/
 int isblank(char c);

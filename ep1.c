@@ -204,7 +204,7 @@ int isblank(char c)
 }
 
 /*Assigns a process to a core*/
-unsigned int use_core(Process *process, Core *core, unsigned int cores)
+void use_core(Process *process, Core *core, unsigned int cores)
 {
   unsigned int i = 0;
   while(i < cores) {
@@ -217,13 +217,12 @@ unsigned int use_core(Process *process, Core *core, unsigned int cores)
     }
     else i++;
   }
-  return 1;
 }
 
 /*System checks if a CPU that was previously in use is available*/
-void check_cores_available(Core *core, unsigned int cores)
+unsigned int check_cores_available(Core *core, unsigned int cores)
 {
-  unsigned int i;
+  unsigned int i, count = 0;
   for(i = 0; i < cores; i++) {
     if(core[i].process != NULL) {
       /*Mutex to read 'done' safely*/
@@ -233,7 +232,9 @@ void check_cores_available(Core *core, unsigned int cores)
       pthread_mutex_unlock(&(core[i].process->mutex));
       core[i].process = NULL;
     }
+    if(core[i].available) count++;
   }
+  return count;
 }
 
 /*Get the number of finished processes*/
@@ -260,7 +261,7 @@ void *sjf(void *args)
     clock_t start = clock();
     Core *core;
 
-    cores = available_cores = sysconf(_SC_NPROCESSORS_ONLN);
+    cores = sysconf(_SC_NPROCESSORS_ONLN);
     core = malloc(cores * sizeof(*core));
     for(count = 0; count < cores; count++) {
       core[count].available = True;
@@ -271,11 +272,11 @@ void *sjf(void *args)
     while(count != process->total) {
       Process *next = NULL;
 
-      check_cores_available(core, cores);
+      available_cores = check_cores_available(core, cores);
       fetchprocess(process->process, process->total, start);
       next = select_sjf(process->process, process->total, start);
       if(next != NULL && available_cores > 0) {
-        available_cores -= use_core(next, core, cores);
+        use_core(next, core, cores);
 
         next->working = True;
         sem_post(&(next->next_stage));
