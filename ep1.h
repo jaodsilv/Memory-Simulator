@@ -52,3 +52,4 @@ int isblank(char c);
 void initiate_sjf(pthread_t *, Process *, unsigned int *);
 void *sjf(void *);
 Process *select_sjf(Process *, unsigned int);
+void do_task(Process *process);

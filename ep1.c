@@ -292,7 +292,7 @@ void *sjf(void *args)
     /*Wait the system assigns a CPU to the process*/
     sem_wait(&(process->next_stage));
     /*do task here*/
-
+    do_task(process);
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->done = True;
@@ -316,6 +316,19 @@ void initiate_sjf(pthread_t *threads, Process *process, unsigned int *total)
     if(pthread_join(threads[i], NULL)) {
       printf("Error joining process thread.\n");
       return;
+    }
+  }
+}
+
+/*Running process*/
+void do_task(Process *process)
+{
+  float sec, dl;
+  clock_t duration = clock();
+
+  while((sec = (((float)(clock() - duration)) / CLOCKS_PER_SEC)) < process->duration) {
+    if((dl = (((float)(clock() - start)) / CLOCKS_PER_SEC)) > process->deadline) {
+      printf("Process '%s' deadline. duration: %f  deadline: %f\n", process->name, dl, process->deadline);
     }
   }
 }
@@ -345,6 +358,5 @@ Process *select_sjf(Process *process, unsigned int total)
       if(next == NULL) next = &process[i];
       else if(process[i].duration < next->duration) next = &process[i];
     }
-
   return next;
 }
