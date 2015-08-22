@@ -19,6 +19,8 @@ typedef struct process {
   int    priority;       /*Priority. An integer in the range [-20, 19]*/
   boolean working;       /*Process is running in a CPU?*/
   boolean    done;       /*CPU done with the process?*/
+  sem_t next_stage;      /*Stages of a process: Arrive -> working -> done*/
+  pthread_mutex_t mutex; /*Safe reading/writing 'done' variable*/
   /*Used only by the coordinator.
     For i processes, the coordinator is at the index i and the rest of the processes
     are at indexes 0 to i - 1 of the array pointes by *process*/
@@ -36,7 +38,8 @@ typedef struct core {
 int run(char **, char *);
 Process *readtfile(Process *, char *, char *, unsigned int *, char *);
 void fetchprocess(Process *, unsigned int, clock_t);
-void use_core(Process *, Core *, unsigned int);
+unsigned int use_core(Process *, Core *, unsigned int);
+unsigned int finished_processes(Process *process, unsigned int total);
 
 /*Helper functions*/
 int isblank(char c);

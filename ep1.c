@@ -1,15 +1,17 @@
+#define _XOPEN_SOURCE 500 /*To compile without nanosleep implicit declaration warning*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <unistd.h>
 #include <time.h>
 #include "ep1.h"
 
 int run(char **argv, char *wd)
 {
-  unsigned int all = 0, *total = &all;
+  unsigned int i, all = 0, *total = &all;
   Process *process;
   process = malloc(100 * sizeof(*process));
 
@@ -18,6 +20,30 @@ int run(char **argv, char *wd)
   printf("Run argument 4 = %s\n", argv[3]);
 
   process = readtfile(process, wd, argv[1], total, argv[3]);
+
+  /*Initialize mutex devices*/
+  for(i = 0; i < *total; i++) {
+    unsigned int j;
+    if(sem_init(&process[i].next_stage, 0, 0)) {
+      printf("Error initializing semaphore.\n");
+      for(j = 0; j < i; j++) {
+        sem_destroy(&process[j].next_stage);
+        pthread_mutex_destroy(&process[j].mutex);
+      }
+      free(process); process = NULL;
+      return 0;
+    }
+    if(pthread_mutex_init(&process[i].mutex, NULL) != 0) {
+      printf("\nError initializing MutEx.\n");
+      for(j = 0; j < i; j++) {
+        sem_destroy(&process[j].next_stage);
+        pthread_mutex_destroy(&process[j].mutex);
+      }
+      free(process); process = NULL;
+      return 0;
+    }
+  }
+
   /*Uncomment the code below and declare an 'unsigned int i' to see stored data*/
   /*for(i = 0; i < *total; i++) {
     printf("Process %d:\n\tArrival = %f\n\tname = %s\n\tDuration = %f\n\tDeadline = %f\n\tPriority = %d\n\n", i+1, process[i].arrival, process[i].name, process[i].duration, process[i].deadline, process[i].priority);
@@ -55,6 +81,10 @@ int run(char **argv, char *wd)
         printf("6. RRTS\n");
         break;
       free(threads); threads = NULL;
+      for(i = 0; i < *total; i++) {
+        sem_destroy(&process[i].next_stage);
+        pthread_mutex_destroy(&process[i].mutex);
+      }
       free(process); process = NULL;
     }
   }
@@ -174,7 +204,7 @@ int isblank(char c)
 }
 
 /*Assigns a process to a core*/
-void use_core(Process *process, Core *core, unsigned int cores)
+unsigned int use_core(Process *process, Core *core, unsigned int cores)
 {
   unsigned int i = 0;
   while(i < cores) {
@@ -187,6 +217,36 @@ void use_core(Process *process, Core *core, unsigned int cores)
     }
     else i++;
   }
+  return 1;
+}
+
+/*System checks if a CPU that was previously in use is available*/
+void check_cores_available(Core *core, unsigned int cores)
+{
+  unsigned int i;
+  for(i = 0; i < cores; i++) {
+    if(core[i].process != NULL) {
+      /*Mutex to read 'done' safely*/
+      pthread_mutex_lock(&(core[i].process->mutex));
+      if(core[i].process->done)
+        core[i].available = True;
+      pthread_mutex_unlock(&(core[i].process->mutex));
+      core[i].process = NULL;
+    }
+  }
+}
+
+/*Get the number of finished processes*/
+unsigned int finished_processes(Process *process, unsigned int total)
+{
+  unsigned int i, count = 0;
+  for(i = 0; i < total; i++) {
+    /*Mutex to read 'done' safely*/
+    pthread_mutex_lock(&(process[i].mutex));
+    if(process[i].done) count++;
+    pthread_mutex_unlock(&(process[i].mutex));
+  }
+  return count;
 }
 
 /*Shortest Job First*/
@@ -211,22 +271,32 @@ void *sjf(void *args)
     while(count != process->total) {
       Process *next = NULL;
 
+      check_cores_available(core, cores);
       fetchprocess(process->process, process->total, start);
       next = select_sjf(process->process, process->total, start);
       if(next != NULL && available_cores > 0) {
-        use_core(next, core, cores); available_cores--;
+        available_cores -= use_core(next, core, cores);
 
-        count++;
         next->working = True;
+        sem_post(&(next->next_stage));
+
       }
+      count = finished_processes(process->process, process->total);
     }
 
     free(core); core = NULL;
   }
 	else {
-    /*printf("%s: Arrival %f, Duration %f, Deadline %f, Priority %d Coord? %d\n", process->name, process->arrival, process->duration, process->deadline, process->priority, process->coordinator);*/
+    /*Wait the system know the process has arrived*/
+    sem_wait(&(process->next_stage));
+    /*Wait the system assigns a CPU to the process*/
+    sem_wait(&(process->next_stage));
+    /*do task here*/
 
-
+    /*This thread is done. Mutex to write 'done' safely*/
+    pthread_mutex_lock(&(process->mutex));
+    process->done = True;
+    pthread_mutex_unlock(&(process->mutex));
   }
 
 	return NULL;
@@ -259,6 +329,7 @@ void fetchprocess(Process *process, unsigned int total, clock_t start)
   for(i = 0; i < total; i++)
     if(sec >= process[i].arrival && !process[i].arrived) {
       process[i].arrived = True;
+      sem_post(&(process[i].next_stage));
       printf("%s has arrived\n", process[i].name);
     }
 }
