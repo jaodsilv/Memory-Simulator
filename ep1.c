@@ -267,26 +267,20 @@ void *sjf(void *args)
   Process *process = ((Process*) args);
 
 	if(process->coordinator) {
-    /*printf("Coordinator: Total = %u  Coord? %d  process0 = %s paramd? %d\n", process->total, process->coordinator, process->process[0].name, process->paramd);*/
     unsigned int available_cores, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
-    clock_t start = clock();
     Core *core;
 
     core = malloc(cores * sizeof(*core));
     initialize_cores(core, cores);
 
+    start = clock();
     while(count != process->total) {
       Process *next = NULL;
 
       available_cores = check_cores_available(core, cores);
-      fetchprocess(process->process, process->total, start);
-      next = select_sjf(process->process, process->total, start);
-
-      if(next != NULL && available_cores > 0) {
-        use_core(next, core, cores);
-
-      }
-
+      fetchprocess(process->process, process->total);
+      next = select_sjf(process->process, process->total);
+      if(next != NULL && available_cores > 0) use_core(next, core, cores);
       count = finished_processes(process->process, process->total);
     }
 
@@ -327,7 +321,7 @@ void initiate_sjf(pthread_t *threads, Process *process, unsigned int *total)
 }
 
 /*Look up for new processes*/
-void fetchprocess(Process *process, unsigned int total, clock_t start)
+void fetchprocess(Process *process, unsigned int total)
 {
   unsigned int i;
   float sec = ((float)(clock() - start)) / CLOCKS_PER_SEC;
@@ -341,7 +335,7 @@ void fetchprocess(Process *process, unsigned int total, clock_t start)
 }
 
 /*Selects the shortest process */
-Process *select_sjf(Process *process, unsigned int total, clock_t start)
+Process *select_sjf(Process *process, unsigned int total)
 {
   unsigned int i;
   Process *next = NULL;
