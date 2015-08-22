@@ -251,6 +251,16 @@ unsigned int finished_processes(Process *process, unsigned int total)
   return count;
 }
 
+/*Initialize cores*/
+void initialize_cores(Core *core, unsigned int cores)
+{
+  unsigned int count;
+  for(count = 0; count < cores; count++) {
+    core[count].available = True;
+    core[count].process = NULL;
+  }
+}
+
 /*Shortest Job First*/
 void *sjf(void *args)
 {
@@ -258,28 +268,25 @@ void *sjf(void *args)
 
 	if(process->coordinator) {
     /*printf("Coordinator: Total = %u  Coord? %d  process0 = %s paramd? %d\n", process->total, process->coordinator, process->process[0].name, process->paramd);*/
-    unsigned int cores, available_cores, count;
+    unsigned int available_cores, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
     clock_t start = clock();
     Core *core;
 
-    cores = sysconf(_SC_NPROCESSORS_ONLN);
     core = malloc(cores * sizeof(*core));
-    for(count = 0; count < cores; count++) {
-      core[count].available = True;
-      core[count].process = NULL;
-    }
+    initialize_cores(core, cores);
 
-    count = 0;
     while(count != process->total) {
       Process *next = NULL;
 
       available_cores = check_cores_available(core, cores);
       fetchprocess(process->process, process->total, start);
       next = select_sjf(process->process, process->total, start);
+
       if(next != NULL && available_cores > 0) {
         use_core(next, core, cores);
 
       }
+
       count = finished_processes(process->process, process->total);
     }
 

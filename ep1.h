@@ -37,6 +37,7 @@ typedef struct core {
 /*Simulator general functions*/
 int run(char **, char *);
 Process *readtfile(Process *, char *, char *, unsigned int *, char *);
+void initialize_cores(Core *, unsigned int);
 void fetchprocess(Process *, unsigned int, clock_t);
 void use_core(Process *, Core *, unsigned int);
 unsigned int finished_processes(Process *, unsigned int);
