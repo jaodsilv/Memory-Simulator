@@ -213,6 +213,7 @@ void use_core(Process *process, Core *core, unsigned int cores)
       core[i].process = process;
       core[i].process->working = True;
       printf("Process '%s' assigned to core %d\n", core[i].process->name, i+1);
+      sem_post(&(core[i].process->next_stage));
       break;
     }
     else i++;
@@ -277,9 +278,6 @@ void *sjf(void *args)
       next = select_sjf(process->process, process->total, start);
       if(next != NULL && available_cores > 0) {
         use_core(next, core, cores);
-
-        next->working = True;
-        sem_post(&(next->next_stage));
 
       }
       count = finished_processes(process->process, process->total);
