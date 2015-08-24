@@ -114,14 +114,14 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
           if(isdigit(c) || c == '.') {
             tmp[i++] = c;
             if(c == '.') dots++;
-            if(dots > 1) { free(process); return NULL; }
+            if(dots > 1) { free(process); fclose(fptr); return NULL; }
           }
           else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 2; dots = 0;
             process[j].arrival = atof(tmp);
             continue;
           }
-          else { free(process); return NULL; }
+          else { free(process); fclose(fptr); return NULL; }
           break;
 
         case 2: /*Get name*/
@@ -131,42 +131,42 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
             strcpy(process[j].name, tmp);
             continue;
           }
-          else { free(process); return NULL; }
+          else { free(process); fclose(fptr); return NULL; }
           break;
 
         case 3: /*Get duration*/
           if(isdigit(c) || c == '.') {
             tmp[i++] = c;
             if(c == '.') dots++;
-            if(dots > 1) { free(process); return NULL; }
+            if(dots > 1) { free(process); fclose(fptr); return NULL; }
           }
           else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 4; dots = 0;
             process[j].duration = atof(tmp);
             continue;
           }
-          else { free(process); return NULL; }
+          else { free(process); fclose(fptr); return NULL; }
           break;
 
         case 4: /*Get deadline*/
           if(isdigit(c) || c == '.') {
             tmp[i++] = c;
             if(c == '.') dots++;
-            if(dots > 1) { free(process); return NULL; }
+            if(dots > 1) { free(process); fclose(fptr); return NULL; }
           }
           else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 5; dots = 0;
             process[j].deadline = atof(tmp);
             continue;
           }
-          else { free(process); return NULL; }
+          else { free(process); fclose(fptr); return NULL; }
           break;
 
         case 5: /*Get Priority*/
           if(isdigit(c) || c == '-') {
             tmp[i++] = c;
             if(c == '-') dots++;
-            if(dots > 1) { free(process); return NULL; }
+            if(dots > 1) { free(process); fclose(fptr); return NULL; }
           }
           else if(isspace(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 1; dots = 0; *total += 1;
@@ -180,7 +180,7 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
               size *= 2;
             }
           }
-        else { free(process); return NULL; }
+        else { free(process); fclose(fptr); return NULL; }
         break;
       }
     }
@@ -189,6 +189,7 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
     if(paramd != NULL) process[j].paramd = True;
     else process[j].paramd = False;
     process[j++].process = process;
+    fclose(fptr);
     return process = realloc(process, j * sizeof(*process));
   }
   else {
