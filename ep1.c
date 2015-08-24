@@ -44,10 +44,6 @@ int run(char **argv, char *wd)
     }
   }
 
-  /*Uncomment the code below and declare an 'unsigned int i' to see stored data*/
-  /*for(i = 0; i < *total; i++) {
-    printf("Process %d:\n\tArrival = %f\n\tname = %s\n\tDuration = %f\n\tDeadline = %f\n\tPriority = %d\n\n", i+1, process[i].arrival, process[i].name, process[i].duration, process[i].deadline, process[i].priority);
-  }*/
   if(process != NULL) {
     unsigned int scheduler;
     pthread_t *threads;
@@ -213,7 +209,7 @@ void use_core(Process *process, Core *core, unsigned int cores)
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
-      printf("Process '%s' assigned to core %d\n", core[i].process->name, i+1);
+      printf("Process '%s' assigned to core %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
       break;
     }
@@ -229,10 +225,12 @@ unsigned int check_cores_available(Core *core, unsigned int cores)
     if(core[i].process != NULL) {
       /*Mutex to read 'done' safely*/
       pthread_mutex_lock(&(core[i].process->mutex));
-      if(core[i].process->done)
+      if(core[i].process->done) {
+        printf("Process '%s' has released CPU %u.\n", core[i].process->name, i);
         core[i].available = True;
+      }
       pthread_mutex_unlock(&(core[i].process->mutex));
-      core[i].process = NULL;
+      if(core[i].available) core[i].process = NULL;
     }
     if(core[i].available) count++;
   }
@@ -284,11 +282,11 @@ void *sjf(void *args)
     while(count != process->total) {
       Process *next = NULL;
 
-      available_cores = check_cores_available(core, cores);
       fetch_process(process->process, process->total);
       next = select_sjf(process->process, process->total);
       if(next != NULL && available_cores > 0) use_core(next, core, cores);
       count = finished_processes(process->process, process->total);
+      available_cores = check_cores_available(core, cores);
     }
 
     free(core); core = NULL;
@@ -335,7 +333,7 @@ void do_task(Process *process)
 
   while((sec = (((float)(clock() - duration)) / CLOCKS_PER_SEC)) < process->duration) {
     if((dl = (((float)(clock() - start)) / CLOCKS_PER_SEC)) > process->deadline) {
-      printf("Process '%s' deadline. duration: %f  deadline: %f\n", process->name, dl, process->deadline);
+      /*printf("Process '%s' deadline. duration: %f  deadline: %f\n", process->name, dl, process->deadline);*/
     }
   }
 }
