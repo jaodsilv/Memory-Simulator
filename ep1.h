@@ -28,31 +28,13 @@ typedef struct process {
   struct process *process; /*All the processes*/
 } Process;
 
-typedef struct core {
-  boolean available;       /*Is this core available?*/
-  Process *process;        /*If the core is busy, register the process using this core*/
-} Core;
-
 /*Simulator Globals*/
 clock_t start;           /*Simulator initial time*/
 boolean paramd;          /*Register if the 4th optional parameter was passed*/
 
-/*Simulator general functions*/
+/*Simulator functions prototypes*/
 int run(char **, char *);
 Process *read_trace_file(Process *, char *, char *, unsigned int *);
-void initialize_cores(Core *, unsigned int);
-void fetch_process(Process *, unsigned int);
-void use_core(Process *, Core *, unsigned int);
-unsigned int finished_processes(Process *, unsigned int);
-unsigned int check_cores_available(Core *, unsigned int);
 int initialize_mutex(Process *, unsigned int *);
 void free_mutex(Process *, unsigned int *);
-
-/*Helper functions*/
 int is_blank(char c);
-
-/*SJF-specific functions*/
-void initiate_sjf(pthread_t *, Process *, unsigned int *);
-void *sjf(void *);
-Process *select_sjf(Process *, unsigned int);
-void do_task(Process *process);
