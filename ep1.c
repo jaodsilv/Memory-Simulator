@@ -19,7 +19,9 @@ int run(char **argv, char *wd)
   printf("Run argument 3 = %s\n", argv[2]);
   printf("Run argument 4 = %s\n", argv[3]);
 
-  process = read_trace_file(process, wd, argv[1], total, argv[3]);
+  process = read_trace_file(process, wd, argv[1], total);
+  if(argv[3] != NULL) paramd = True;
+  else paramd = False;
 
   /*Initialize mutex devices*/
   for(i = 0; i < *total; i++) {
@@ -95,7 +97,7 @@ int run(char **argv, char *wd)
 
 /*Read the trace file 'tfile' and store its content in the array 'process',
   creating process "objects"*/
-Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *total, char *paramd)
+Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *total)
 {
   FILE *fptr;
   char input[256];
@@ -184,8 +186,6 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
     }
     process[j].coordinator = True;
     process[j].total = *total;
-    if(paramd != NULL) process[j].paramd = True;
-    else process[j].paramd = False;
     process[j++].process = process;
     fclose(fptr);
     return process = realloc(process, j * sizeof(*process));
@@ -211,7 +211,7 @@ void use_core(Process *process, Core *core, unsigned int cores)
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
-      printf("Process '%s' assigned to core %d\n", core[i].process->name, i);
+      if(paramd) printf("Process '%s' assigned to core %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
       break;
     }
@@ -228,7 +228,7 @@ unsigned int check_cores_available(Core *core, unsigned int cores)
       /*Mutex to read 'done' safely*/
       pthread_mutex_lock(&(core[i].process->mutex));
       if(core[i].process->done) {
-        printf("Process '%s' has released CPU %u.\n", core[i].process->name, i);
+        if(paramd) printf("Process '%s' has released CPU %u.\n", core[i].process->name, i);
         core[i].available = True;
       }
       pthread_mutex_unlock(&(core[i].process->mutex));
@@ -250,7 +250,7 @@ unsigned int finished_processes(Process *process, unsigned int total)
       count++;
       if(process[i].working) {
         process[i].working = False;
-        printf("Must print the contents of the output for this process here. Substitute this message.\n");
+        if(paramd) printf("Must print the contents of the output for this process here. Substitute this message.\n");
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -350,7 +350,7 @@ void fetch_process(Process *process, unsigned int total)
     if(sec >= process[i].arrival && !process[i].arrived) {
       process[i].arrived = True;
       sem_post(&(process[i].next_stage));
-      printf("%s has arrived (trace file line %u)\n", process[i].name, i + 1);
+      if(paramd) printf("%s has arrived (trace file line %u)\n", process[i].name, i + 1);
     }
 }
 

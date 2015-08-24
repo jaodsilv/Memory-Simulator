@@ -25,7 +25,6 @@ typedef struct process {
     For i processes, the coordinator is at the index i and the rest of the processes
     are at indexes 0 to i - 1 of the array pointes by *process*/
   unsigned int total;      /*Total number of processes running*/
-  boolean paramd;          /*Register if the 4th optional parameter was passed*/
   struct process *process; /*All the processes*/
 } Process;
 
@@ -34,11 +33,13 @@ typedef struct core {
   Process *process;        /*If the core is busy, register the process using this core*/
 } Core;
 
-clock_t start;
+/*Simulator Globals*/
+clock_t start;           /*Simulator initial time*/
+boolean paramd;          /*Register if the 4th optional parameter was passed*/
 
 /*Simulator general functions*/
 int run(char **, char *);
-Process *read_trace_file(Process *, char *, char *, unsigned int *, char *);
+Process *read_trace_file(Process *, char *, char *, unsigned int *);
 void initialize_cores(Core *, unsigned int);
 void fetch_process(Process *, unsigned int);
 void use_core(Process *, Core *, unsigned int);
