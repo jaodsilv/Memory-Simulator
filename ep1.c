@@ -11,7 +11,7 @@
 
 int run(char **argv, char *wd)
 {
-  unsigned int i, all = 0, *total = &all;
+  unsigned int all = 0, *total = &all;
   Process *process;
   process = malloc(100 * sizeof(*process));
 
@@ -23,28 +23,7 @@ int run(char **argv, char *wd)
   if(argv[3] != NULL) paramd = True;
   else paramd = False;
 
-  /*Initialize mutex devices*/
-  for(i = 0; i < *total; i++) {
-    unsigned int j;
-    if(sem_init(&process[i].next_stage, 0, 0)) {
-      printf("Error initializing semaphore.\n");
-      for(j = 0; j < i; j++) {
-        sem_destroy(&process[j].next_stage);
-        pthread_mutex_destroy(&process[j].mutex);
-      }
-      free(process); process = NULL;
-      return 0;
-    }
-    if(pthread_mutex_init(&process[i].mutex, NULL) != 0) {
-      printf("\nError initializing MutEx.\n");
-      for(j = 0; j < i; j++) {
-        sem_destroy(&process[j].next_stage);
-        pthread_mutex_destroy(&process[j].mutex);
-      }
-      free(process); process = NULL;
-      return 0;
-    }
-  }
+  if(!initialize_mutex(process, total)) return 0;
 
   if(process != NULL) {
     unsigned int scheduler;
@@ -81,10 +60,7 @@ int run(char **argv, char *wd)
         printf("6. RRTS\n");
         break;
       free(threads); threads = NULL;
-      for(i = 0; i < *total; i++) {
-        sem_destroy(&process[i].next_stage);
-        pthread_mutex_destroy(&process[i].mutex);
-      }
+      free_mutex(process, total);
       free(process); process = NULL;
     }
   }
@@ -93,6 +69,44 @@ int run(char **argv, char *wd)
     printf("format and you are executing ep1 command from the right folder.\n");
   }
   return 0;
+}
+
+/*Free mutexes*/
+void free_mutex(Process *process, unsigned int *total)
+{
+  unsigned int i;
+  for(i = 0; i < *total; i++) {
+    sem_destroy(&process[i].next_stage);
+    pthread_mutex_destroy(&process[i].mutex);
+  }
+}
+
+/*Initializes mutexes*/
+int initialize_mutex(Process *process, unsigned int *total)
+{
+  unsigned int i;
+  for(i = 0; i < *total; i++) {
+    unsigned int j;
+    if(sem_init(&process[i].next_stage, 0, 0)) {
+      printf("Error initializing semaphore.\n");
+      for(j = 0; j < i; j++) {
+        sem_destroy(&process[j].next_stage);
+        pthread_mutex_destroy(&process[j].mutex);
+      }
+      free(process); process = NULL;
+      return 0;
+    }
+    if(pthread_mutex_init(&process[i].mutex, NULL) != 0) {
+      printf("\nError initializing MutEx.\n");
+      for(j = 0; j < i; j++) {
+        sem_destroy(&process[j].next_stage);
+        pthread_mutex_destroy(&process[j].mutex);
+      }
+      free(process); process = NULL;
+      return 0;
+    }
+  }
+  return 1;
 }
 
 /*Read the trace file 'tfile' and store its content in the array 'process',

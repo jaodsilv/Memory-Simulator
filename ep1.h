@@ -45,6 +45,8 @@ void fetch_process(Process *, unsigned int);
 void use_core(Process *, Core *, unsigned int);
 unsigned int finished_processes(Process *, unsigned int);
 unsigned int check_cores_available(Core *, unsigned int);
+int initialize_mutex(Process *, unsigned int *);
+void free_mutex(Process *, unsigned int *);
 
 /*Helper functions*/
 int is_blank(char c);
