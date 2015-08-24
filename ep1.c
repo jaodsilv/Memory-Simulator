@@ -59,6 +59,8 @@ int run(char **argv, char *wd)
         /*do SJF*/
         printf("2. SJF\n");
         initiate_sjf(threads, process, total);
+        printf("\n\n* * * * * * * * * *\n\n");
+        printf("SJF simulation has finished. Your output file can be found in 'outputs' folder.");
         break;
       case SRTN:
         /*do SRTN*/
