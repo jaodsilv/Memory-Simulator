@@ -36,6 +36,9 @@ int run(char **argv, char *wd)
       case FCFS:
         /*do FCFS*/
         printf("1. FCFS\n");
+        do_fcfs(threads, process, total);
+        printf("\n\n* * * * * * * * * *\n\n");
+        printf("FCFS simulation has finished. Your output file can be found in 'outputs' folder.\n");
         break;
       case SJF:
         /*do SJF*/
