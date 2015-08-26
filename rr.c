@@ -62,7 +62,7 @@ void use_core_rr(Process *process, Core *core, unsigned int cores)
 {
   unsigned int i = 0;
   while(i < cores) {
-    if(core[i].available && !process->working) {
+    if(core[i].available && !process->working && !process->done) {
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
