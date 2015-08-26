@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "ep1.h"
+#include "core.h"
 #include "rr.h"
 
 /*Round Robin*/

@@ -1,5 +1,3 @@
-#include "core.h"
-
 void *sjf(void *);
 void initialize_cores_sjf(Core *, unsigned int);
 void fetch_process_sjf(Process *, unsigned int);

@@ -8,6 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "ep1.h"
+#include "core.h"
 #include "sjf.h"
 #include "fcfs.h"
 #include "rr.h"

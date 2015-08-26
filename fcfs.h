@@ -1,5 +1,3 @@
-#include "core.h"
-
 void *fcfs(void *);
 void initialize_cores_fcfs(Core *, unsigned int);
 void fetch_process_fcfs(Process *, unsigned int);

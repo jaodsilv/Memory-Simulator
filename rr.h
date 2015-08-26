@@ -1,5 +1,3 @@
-#include "core.h"
-
 void *rr(void *);
 void initialize_cores_rr(Core *, unsigned int);
 void fetch_process_rr(Process *, unsigned int, Rotation *);
