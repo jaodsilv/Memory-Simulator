@@ -15,6 +15,7 @@ typedef struct process {
   boolean arrived;       /*Have the process arrived?*/
   char   name[64];       /*The name of the process. Works as an identifier*/
   float  duration;       /*CPU's real time consumed by the process in the simulation*/
+  float  remaining;      /*Used by a few scheduling policies such as round robin to register remaining time*/
   float  deadline;       /*The maximum amount of time this process can take to finish*/
   int    priority;       /*Priority. An integer in the range [-20, 19]*/
   boolean working;       /*Process is running in a CPU?*/

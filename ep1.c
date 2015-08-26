@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include "ep1.h"
 #include "sjf.h"
+#include "fcfs.h"
+#include "rr.h"
 
 int run(char **argv, char *wd)
 {
@@ -54,6 +56,9 @@ int run(char **argv, char *wd)
       case RR:
         /*do RR*/
         printf("4. RR\n");
+        do_rr(threads, process, total);
+        printf("\n\n* * * * * * * * * *\n\n");
+        printf("RR simulation has finished. Your output file can be found in 'outputs' folder.\n");
         break;
       case PS:
         /*do PS*/
@@ -160,7 +165,7 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
           }
           else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 4; dots = 0;
-            process[j].duration = atof(tmp);
+            process[j].duration = process[j].remaining = atof(tmp);
             continue;
           }
           else { free(process); fclose(fptr); return NULL; }

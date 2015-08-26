@@ -1,7 +1,4 @@
-typedef struct core {
-  boolean available;       /*Is this core available?*/
-  Process *process;        /*If the core is busy, register the process using this core*/
-} Core;
+#include "core.h"
 
 void *fcfs(void *);
 void initialize_cores_fcfs(Core *, unsigned int);
