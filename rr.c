@@ -13,10 +13,10 @@ void *rr(void *args)
   Process *process = ((Process*) args);
 
 	if(process->coordinator) {
-    unsigned int count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
+    unsigned int i, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
     float quantum = 4.0;
     Process *next = NULL;
-    Rotation *list;
+    Rotation *list, *r;
     Core *core;
 
     core = malloc(cores * sizeof(*core));
@@ -27,16 +27,22 @@ void *rr(void *args)
     start = clock();
     while(count != process->total) {
 
-      release_cores_rr(process->process, process->total, core, cores, quantum);
+      if(process->total - count > cores)
+        release_cores_rr(process->process, process->total, core, cores, quantum);
       fetch_process_rr(process->process, process->total, list);
       next = select_rr(next, list);
 
       if(next != NULL) use_core_rr(next, core, cores);
       count = finished_processes_rr(process->process, process->total);
-      check_cores_available_rr(core, cores); /*
-      printf("\n\n\nAQUI %u\n\n\n", count);*/
+      check_cores_available_rr(core, cores);
     }
-    /*TODO!!! free list AQUI*/
+
+    while(count > 0) {
+      r = list->next;
+      free(list); list = NULL;
+      list = r;
+      count--;
+    }
     free(core); core = NULL;
   }
 	else {
@@ -106,7 +112,7 @@ unsigned int finished_processes_rr(Process *process, unsigned int total)
       count++;
       if(process[i].working) {
         process[i].working = False;
-        if(paramd) printf("Must print the contents of the output for this process here. Substitute this message.\n");
+        if(paramd) printf("Must print the contents of the output for %s here. Substitute this message.\n", process[i].name);
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -121,7 +127,6 @@ void initialize_cores_rr(Core *core, unsigned int cores)
   for(count = 0; count < cores; count++) {
     core[count].available = True;
     core[count].process = NULL;
-    core[count].timer = clock();
   }
 }
 
@@ -215,7 +220,7 @@ void release_cores_rr(Process *process, unsigned int total, Core *core, unsigned
       int j;
       for(j = 0; j < total; j++) if(core[i].process == &process[j]) {
         process[j].working = False;
-        printf("Process '%s' has been removed from CPU %u. Quantum time (4.0s) expired.\n", core[i].process->name, i);
+        printf("Process '%s' has been removed from CPU %u. Quantum time expired (%f > 4.0s).\n", core[i].process->name, i, sec);
         break;
       }
       core[i].available = True;
