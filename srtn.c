@@ -5,44 +5,32 @@
 #include <stdio.h>
 #include "ep1.h"
 #include "core.h"
-#include "rr.h"
+#include "srtn.h"
 
-/*Round Robin*/
-void *rr(void *args)
+/*Shortest Remaining Time Next*/
+void *srtn(void *args)
 {
   Process *process = ((Process*) args);
 
 	if(process->coordinator) {
-    unsigned int count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
-    float quantum = 4.0;
-    Process *next = NULL;
-    Rotation *list, *r;
+    unsigned int available_cores, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
     Core *core;
 
     core = malloc(cores * sizeof(*core));
-    list = malloc(sizeof(*list));
-    list->process = NULL; list->next = list;
-    initialize_cores_rr(core, cores);
+    initialize_cores_srtn(core, cores);
 
     start = clock();
     while(count != process->total) {
+      Process *next = NULL;
 
-      if(process->total - count > cores)
-        release_cores_rr(process->process, process->total, core, cores, quantum);
-      fetch_process_rr(process->process, process->total, list);
-      next = select_rr(next, list);
-
-      if(next != NULL) use_core_rr(next, core, cores);
-      count = finished_processes_rr(process->process, process->total);
-      check_cores_available_rr(core, cores);
+      fetch_process_srtn(process->process, process->total);
+      next = select_srtn(process->process, process->total);
+      if(next != NULL && available_cores == 0) available_cores = release_core_srtn(next, core, cores);
+      if(next != NULL && available_cores > 0) use_core_srtn(next, core, cores);
+      count = finished_processes_srtn(process->process, process->total);
+      available_cores = check_cores_available_srtn(core, cores);
     }
 
-    while(count > 0) {
-      r = list->next;
-      free(list); list = NULL;
-      list = r;
-      count--;
-    }
     free(core); core = NULL;
   }
 	else {
@@ -53,7 +41,7 @@ void *rr(void *args)
     while(!completed) {
       sem_wait(&(process->next_stage));
       /*do task here*/
-      completed = do_task_rr(process);
+      completed = do_task_srtn(process);
     }
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
@@ -64,17 +52,16 @@ void *rr(void *args)
 }
 
 /*Assigns a process to a core*/
-void use_core_rr(Process *process, Core *core, unsigned int cores)
+void use_core_srtn(Process *process, Core *core, unsigned int cores)
 {
   unsigned int i = 0;
   while(i < cores) {
-    if(core[i].available && !process->working && !process->done) {
+    if(core[i].available) {
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
       if(paramd) printf("Process '%s' assigned to core %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
-      core[i].timer = clock();
       break;
     }
     else i++;
@@ -82,7 +69,7 @@ void use_core_rr(Process *process, Core *core, unsigned int cores)
 }
 
 /*System checks if a CPU that was previously in use is available*/
-unsigned int check_cores_available_rr(Core *core, unsigned int cores)
+unsigned int check_cores_available_srtn(Core *core, unsigned int cores)
 {
   unsigned int i, count = 0;
   for(i = 0; i < cores; i++) {
@@ -102,7 +89,7 @@ unsigned int check_cores_available_rr(Core *core, unsigned int cores)
 }
 
 /*Get the number of finished processes*/
-unsigned int finished_processes_rr(Process *process, unsigned int total)
+unsigned int finished_processes_srtn(Process *process, unsigned int total)
 {
   unsigned int i, count = 0;
   for(i = 0; i < total; i++) {
@@ -112,7 +99,7 @@ unsigned int finished_processes_rr(Process *process, unsigned int total)
       count++;
       if(process[i].working) {
         process[i].working = False;
-        if(paramd) printf("Must print the contents of the output for %s here. Substitute this message.\n", process[i].name);
+        if(paramd) printf("%s: Must print the contents of the output for this process here. Substitute this message.\n", process[i].name);
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -121,7 +108,7 @@ unsigned int finished_processes_rr(Process *process, unsigned int total)
 }
 
 /*Initialize cores*/
-void initialize_cores_rr(Core *core, unsigned int cores)
+void initialize_cores_srtn(Core *core, unsigned int cores)
 {
   unsigned int count;
   for(count = 0; count < cores; count++) {
@@ -130,12 +117,12 @@ void initialize_cores_rr(Core *core, unsigned int cores)
   }
 }
 
-/*Initiate threads to run rr scheduling*/
-void do_rr(pthread_t *threads, Process *process, unsigned int *total)
+/*Initiate threads to run srtn scheduling*/
+void do_srtn(pthread_t *threads, Process *process, unsigned int *total)
 {
   unsigned int i;
   for(i = 0; i <= *total; i++) {
-    if(pthread_create(&threads[i], NULL, rr, &process[i])) {
+    if(pthread_create(&threads[i], NULL, srtn, &process[i])) {
       printf("Error creating thread.\n");
       return;
     }
@@ -149,16 +136,19 @@ void do_rr(pthread_t *threads, Process *process, unsigned int *total)
 }
 
 /*Running process*/
-int do_task_rr(Process *process)
+int do_task_srtn(Process *process)
 {
+  int i = 1;
   float sec, dl;
   clock_t duration = clock();
 
   while((sec = (((float)(clock() - duration)) / CLOCKS_PER_SEC)) < process->remaining) {
-    if(!process->working) {
+    if(sec > (i / 10)) {
+      i++;
       process->remaining -= sec;
-      return 0;
+      duration = clock();
     }
+    if(!process->working) return 0;
     if((dl = (((float)(clock() - start)) / CLOCKS_PER_SEC)) > process->deadline) {
       /*TODO: Must print this only the first time*/
       /*printf("Process '%s' deadline. duration: %f  deadline: %f\n", process->name, dl, process->deadline);*/
@@ -168,63 +158,49 @@ int do_task_rr(Process *process)
 }
 
 /*Look up for new processes*/
-void fetch_process_rr(Process *process, unsigned int total, Rotation *list)
+void fetch_process_srtn(Process *process, unsigned int total)
 {
-  Rotation *next;
   unsigned int i;
   float sec = ((float)(clock() - start)) / CLOCKS_PER_SEC;
 
-  next = list;
-  while(next->next != list) next = next->next;
   for(i = 0; i < total; i++)
     if(sec >= process[i].arrival && !process[i].arrived) {
-      if(list->process == NULL) {
-        list->process = &process[i];
-        list->next = list;
-      }
-      else {
-        Rotation *new;
-        new = malloc(sizeof(*new));
-        next->next = new;
-        new->process = &process[i];
-        new->next = list;
-        next = next->next;
-      }
-
       process[i].arrived = True;
       sem_post(&(process[i].next_stage));
       if(paramd) printf("%s has arrived (trace file line %u)\n", process[i].name, i + 1);
     }
 }
 
-/*Selects next process to get a CPU*/
-Process *select_rr(Process *next, Rotation *list)
-{
-  if(next == NULL && list->process != NULL) return list->process;
-  else if(next != NULL) {
-    Rotation *r;
-    for(r = list; r->process != next; r = r->next) continue;
-    return r->next->process;
-  }
-  return NULL;
-}
-
-/*Release cores from process that are exceeding the quantum*/
-void release_cores_rr(Process *process, unsigned int total, Core *core, unsigned int cores, float quantum)
+/*Selects the shortest process */
+Process *select_srtn(Process *process, unsigned int total)
 {
   unsigned int i;
-  float sec;
+  Process *next = NULL;
 
-  for(i = 0; i < cores; i++) {
-    if(core[i].process != NULL && (sec = ((float)(clock() - core[i].timer)) / CLOCKS_PER_SEC) > quantum) {
-      int j;
-      for(j = 0; j < total; j++) if(core[i].process == &process[j]) {
-        process[j].working = False;
-        printf("Process '%s' has been removed from CPU %u. Quantum time expired (%f > 4.0s).\n", core[i].process->name, i, sec);
-        break;
-      }
-      core[i].available = True;
-      core[i].process = NULL;
+  for(i = 0; i < total; i++)
+    if(process[i].arrived && !process[i].working && !process[i].done) {
+      if(next == NULL) next = &process[i];
+      else if(process[i].remaining < next->remaining) next = &process[i];
     }
+  return next;
+}
+
+unsigned int release_core_srtn(Process *next, Core *core, unsigned int cores)
+{
+  unsigned int i, j = 0;
+  float higher = core[j].process->remaining;
+
+  for(i = 1; i < cores; i++) if(higher < core[i].process->remaining) {
+    j = i;
+    higher = core[j].process->remaining;
   }
+
+  if(next->remaining < higher) {
+    core[j].process->working = False;
+    core[j].available = True;
+    printf("Process '%s' (remaining time: %f) has been removed from CPU %u.\n", core[j].process->name, higher, j);
+    core[j].process = NULL;
+    return 1;
+  }
+  return 0;
 }

@@ -4,3 +4,5 @@
 5 process3 15 23 2
 4 process4 9 12 12
 4 process5 3 9 10
+2 process7 30 40 0
+2 process8 40 60 1

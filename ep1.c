@@ -9,8 +9,9 @@
 #include <unistd.h>
 #include "ep1.h"
 #include "core.h"
-#include "sjf.h"
 #include "fcfs.h"
+#include "sjf.h"
+#include "srtn.h"
 #include "rr.h"
 
 int run(char **argv, char *wd)
@@ -53,6 +54,9 @@ int run(char **argv, char *wd)
       case SRTN:
         /*do SRTN*/
         printf("3. SRTN\n");
+        do_srtn(threads, process, total);
+        printf("\n\n* * * * * * * * * *\n\n");
+        printf("SRTN simulation has finished. Your output file can be found in 'outputs' folder.\n");
         break;
       case RR:
         /*do RR*/
