@@ -17,23 +17,26 @@
 int run(char **argv, char *wd)
 {
   unsigned int all = 0, *total = &all;
-  Process *process;
+  Process *process, *p;
   process = malloc(100 * sizeof(*process));
 
   printf("Run argument 2 = %s\n", argv[1]);
   printf("Run argument 3 = %s\n", argv[2]);
   printf("Run argument 4 = %s\n", argv[3]);
 
-  process = read_trace_file(process, wd, argv[1], total);
+  if((p = read_trace_file(process, wd, argv[1], total)) == NULL) {
+    free(process); process = NULL;
+  }
+  else process = p;
+
   if(argv[3] != NULL) paramd = True;
   else paramd = False;
-
-  if(!initialize_mutex(process, total)) return 0;
 
   if(process != NULL) {
     unsigned int scheduler;
     pthread_t *threads;
 
+    if(!initialize_mutex(process, total)) return 0;
     threads = malloc((*total + 1) * sizeof(*threads));
 
     switch(scheduler = atoi(argv[0])) {
@@ -142,14 +145,14 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
           if(isdigit(c) || c == '.') {
             tmp[i++] = c;
             if(c == '.') dots++;
-            if(dots > 1) { free(process); fclose(fptr); return NULL; }
+            if(dots > 1) { fclose(fptr); return NULL; }
           }
           else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 2; dots = 0;
             process[j].arrival = atof(tmp);
             continue;
           }
-          else { free(process); fclose(fptr); return NULL; }
+          else { fclose(fptr); return NULL; }
           break;
 
         case 2: /*Get name*/
@@ -159,46 +162,49 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
             strcpy(process[j].name, tmp);
             continue;
           }
-          else { free(process); fclose(fptr); return NULL; }
+          else { fclose(fptr); return NULL; }
           break;
 
         case 3: /*Get duration*/
           if(isdigit(c) || c == '.') {
             tmp[i++] = c;
             if(c == '.') dots++;
-            if(dots > 1) { free(process); fclose(fptr); return NULL; }
+            if(dots > 1) { fclose(fptr); return NULL; }
           }
           else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 4; dots = 0;
             process[j].duration = process[j].remaining = atof(tmp);
             continue;
           }
-          else { free(process); fclose(fptr); return NULL; }
+          else { fclose(fptr); return NULL; }
           break;
 
         case 4: /*Get deadline*/
           if(isdigit(c) || c == '.') {
             tmp[i++] = c;
             if(c == '.') dots++;
-            if(dots > 1) { free(process); fclose(fptr); return NULL; }
+            if(dots > 1) { fclose(fptr); return NULL; }
           }
           else if(is_blank(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 5; dots = 0;
             process[j].deadline = atof(tmp);
             continue;
           }
-          else { free(process); fclose(fptr); return NULL; }
+          else { fclose(fptr); return NULL; }
           break;
 
         case 5: /*Get Priority*/
           if(isdigit(c) || c == '-') {
             tmp[i++] = c;
             if(c == '-') dots++;
-            if(dots > 1) { free(process); fclose(fptr); return NULL; }
+            if(dots > 1) { fclose(fptr); return NULL; }
           }
           else if(isspace(c) && i > 0) {
             tmp[i] = '\0'; i = 0; item = 1; dots = 0; *total += 1;
             process[j].priority = atoi(tmp);
+            if(process[j].priority < -20 || process[j].priority > 19) {
+              fclose(fptr); return NULL;
+            }
             process[j].arrived = False;
             process[j].done = False;
             process[j].working = False;
@@ -208,7 +214,7 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
               size *= 2;
             }
           }
-        else { free(process); fclose(fptr); return NULL; }
+        else { fclose(fptr); return NULL; }
         break;
       }
     }
