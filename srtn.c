@@ -32,7 +32,7 @@ void *srtn(void *args)
       count = finished_processes_srtn(process->process, process->total);
       available_cores = check_cores_available_srtn(core, cores);
     }
-
+    fprintf(stderr, "Total context changes : %u\n", context_changes);
     free(core); core = NULL;
   }
 	else {
@@ -63,7 +63,7 @@ void use_core_srtn(Process *process, Core *core, unsigned int cores)
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
-      if(paramd) printf("Process '%s' assigned to core %d\n", core[i].process->name, i);
+      if(paramd) fprintf(stderr, "Process '%s' assigned to core %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
       break;
     }
@@ -80,7 +80,7 @@ unsigned int check_cores_available_srtn(Core *core, unsigned int cores)
       /*Mutex to read 'done' safely*/
       pthread_mutex_lock(&(core[i].process->mutex));
       if(core[i].process->done) {
-        if(paramd) printf("Process '%s' has released CPU %u.\n", core[i].process->name, i);
+        if(paramd) fprintf(stderr, "Process '%s' has released CPU %u.\n", core[i].process->name, i);
         core[i].available = True;
       }
       pthread_mutex_unlock(&(core[i].process->mutex));
@@ -102,7 +102,8 @@ unsigned int finished_processes_srtn(Process *process, unsigned int total)
       count++;
       if(process[i].working) {
         process[i].working = False;
-        if(paramd) printf("%s: Must print the contents of the output for this process here. Substitute this message.\n", process[i].name);
+        if(paramd) fprintf(stderr, "Process '%s' is done. Line '%s %f %f' will be written in the output file.\n",
+        process[i].name, process[i].name, process[i].finish, process[i].finish - process[i].arrival);
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -170,7 +171,7 @@ void fetch_process_srtn(Process *process, unsigned int total)
     if(sec >= process[i].arrival && !process[i].arrived) {
       process[i].arrived = True;
       sem_post(&(process[i].next_stage));
-      if(paramd) printf("%s has arrived (trace file line %u)\n", process[i].name, i + 1);
+      if(paramd) fprintf(stderr, "Process '%s' has arrived (trace file line %u)\n", process[i].name, i + 1);
     }
 }
 
@@ -201,7 +202,7 @@ unsigned int release_core_srtn(Process *next, Core *core, unsigned int cores)
   if(next->remaining < higher) {
     core[j].process->working = False;
     core[j].available = True;
-    printf("Process '%s' (remaining time: %f) has been removed from CPU %u.\n", core[j].process->name, higher, j);
+    fprintf(stderr, "Process '%s' (remaining time: %f) has been removed from CPU %u.\n", core[j].process->name, higher, j);
     context_changes++;
     core[j].process = NULL;
     return 1;

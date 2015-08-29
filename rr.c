@@ -45,6 +45,7 @@ void *rr(void *args)
       list = r;
       count--;
     }
+    fprintf(stderr, "Total context changes : %u\n", context_changes);
     free(core); core = NULL;
   }
 	else {
@@ -75,7 +76,7 @@ void use_core_rr(Process *process, Core *core, unsigned int cores)
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
-      if(paramd) printf("Process '%s' assigned to core %d\n", core[i].process->name, i);
+      if(paramd) fprintf(stderr, "Process '%s' assigned to core %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
       core[i].timer = clock();
       break;
@@ -93,7 +94,7 @@ unsigned int check_cores_available_rr(Core *core, unsigned int cores)
       /*Mutex to read 'done' safely*/
       pthread_mutex_lock(&(core[i].process->mutex));
       if(core[i].process->done) {
-        if(paramd) printf("Process '%s' has released CPU %u.\n", core[i].process->name, i);
+        if(paramd) fprintf(stderr, "Process '%s' has released CPU %u.\n", core[i].process->name, i);
         core[i].available = True;
       }
       pthread_mutex_unlock(&(core[i].process->mutex));
@@ -115,7 +116,8 @@ unsigned int finished_processes_rr(Process *process, unsigned int total)
       count++;
       if(process[i].working) {
         process[i].working = False;
-        if(paramd) printf("Must print the contents of the output for %s here. Substitute this message.\n", process[i].name);
+        if(paramd) fprintf(stderr, "Process '%s' is done. Line '%s %f %f' will be written in the output file.\n",
+        process[i].name, process[i].name, process[i].finish, process[i].finish - process[i].arrival);
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -196,7 +198,7 @@ void fetch_process_rr(Process *process, unsigned int total, Rotation *list)
 
       process[i].arrived = True;
       sem_post(&(process[i].next_stage));
-      if(paramd) printf("%s has arrived (trace file line %u)\n", process[i].name, i + 1);
+      if(paramd) fprintf(stderr, "Process '%s' has arrived (trace file line %u)\n", process[i].name, i + 1);
     }
 }
 
@@ -223,7 +225,7 @@ void release_cores_rr(Process *process, unsigned int total, Core *core, unsigned
       int j;
       for(j = 0; j < total; j++) if(core[i].process == &process[j]) {
         process[j].working = False;
-        printf("Process '%s' has been removed from CPU %u. Quantum time expired (%f > 4.0s).\n", core[i].process->name, i, sec);
+        fprintf(stderr, "Process '%s' has been removed from CPU %u. Quantum time expired (%f > 4.0s).\n", core[i].process->name, i, sec);
         context_changes++;
         break;
       }
