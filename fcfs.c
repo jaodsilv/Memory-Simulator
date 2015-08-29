@@ -19,6 +19,8 @@ void *fcfs(void *args)
     core = malloc(cores * sizeof(*core));
     initialize_cores_fcfs(core, cores);
 
+    context_changes = 0;
+    process->context_changes = &context_changes;
     start = clock();
     while(count != process->total) {
       Process *next = NULL;
@@ -42,6 +44,7 @@ void *fcfs(void *args)
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->done = True;
+    process->finish = (((float)(clock() - start)) / CLOCKS_PER_SEC);
     pthread_mutex_unlock(&(process->mutex));
   }
 	return NULL;

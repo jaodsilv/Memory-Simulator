@@ -20,9 +20,7 @@ int run(char **argv, char *wd)
   Process *process, *p;
   process = malloc(100 * sizeof(*process));
 
-  printf("Run argument 2 = %s\n", argv[1]);
   printf("Run argument 3 = %s\n", argv[2]);
-  printf("Run argument 4 = %s\n", argv[3]);
 
   if((p = read_trace_file(process, wd, argv[1], total)) == NULL) {
     free(process); process = NULL;
@@ -45,28 +43,44 @@ int run(char **argv, char *wd)
         printf("1. FCFS\n");
         do_fcfs(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("FCFS simulation has finished. Your output file can be found in 'outputs' folder.\n");
+        printf("FCFS simulation has finished. Writing output...\n");
+        write_output(process, wd, argv[2], total);
+        free(threads); threads = NULL;
+        free_mutex(process, total);
+        free(process); process = NULL;
         break;
       case SJF:
         /*do SJF*/
         printf("2. SJF\n");
         do_sjf(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("SJF simulation has finished. Your output file can be found in 'outputs' folder.\n");
+        printf("SJF simulation has finished. Writing output...\n");
+        write_output(process, wd, argv[2], total);
+        free(threads); threads = NULL;
+        free_mutex(process, total);
+        free(process); process = NULL;
         break;
       case SRTN:
         /*do SRTN*/
         printf("3. SRTN\n");
         do_srtn(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("SRTN simulation has finished. Your output file can be found in 'outputs' folder.\n");
+        printf("SRTN simulation has finished. Writing output...\n");
+        write_output(process, wd, argv[2], total);
+        free(threads); threads = NULL;
+        free_mutex(process, total);
+        free(process); process = NULL;
         break;
       case RR:
         /*do RR*/
         printf("4. RR\n");
         do_rr(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("RR simulation has finished. Your output file can be found in 'outputs' folder.\n");
+        printf("RR simulation has finished. Writing output...\n");
+        write_output(process, wd, argv[2], total);
+        free(threads); threads = NULL;
+        free_mutex(process, total);
+        free(process); process = NULL;
         break;
       case PS:
         /*do PS*/
@@ -76,9 +90,6 @@ int run(char **argv, char *wd)
         /*do RRTS*/
         printf("6. RRTS\n");
         break;
-      free(threads); threads = NULL;
-      free_mutex(process, total);
-      free(process); process = NULL;
     }
   }
   else {
@@ -87,6 +98,26 @@ int run(char **argv, char *wd)
   }
   return 0;
 }
+
+/*Writes the output file*/
+void write_output(Process *process, char *wd, char *tfile, unsigned int *total)
+{
+  FILE *fptr;
+  char output[256];
+
+  strcat(strcat(strcpy(output, wd), "/outputs/"), tfile);
+  if((fptr = fopen(output, "w")) != NULL) {
+    unsigned int i;
+    for(i = 0; i < *total; i++)
+      fprintf(fptr, "%s %f %f\n", process[i].name, process[i].finish, process[i].finish - process[i].arrival);
+    fprintf(fptr, "%u\n", *process[i].context_changes);
+    fclose(fptr);
+    printf("Done!\nYour output file can be found in '%s'.\n", output);
+  }
+  else printf("Error writing output file.\n");
+
+}
+
 
 /*Free mutexes*/
 void free_mutex(Process *process, unsigned int *total)

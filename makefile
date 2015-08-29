@@ -22,5 +22,6 @@ sjf.o: sjf.c
 clean:
 	rm -rf *.o
 	rm -rf *~
+	rm -rf outputs/*.txt
 	rm -rf a.out
 	rm ep1sh

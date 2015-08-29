@@ -19,6 +19,8 @@ void *srtn(void *args)
     core = malloc(cores * sizeof(*core));
     initialize_cores_srtn(core, cores);
 
+    context_changes = 0;
+    process->context_changes = &context_changes;
     start = clock();
     while(count != process->total) {
       Process *next = NULL;
@@ -46,6 +48,7 @@ void *srtn(void *args)
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->done = True;
+    process->finish = (((float)(clock() - start)) / CLOCKS_PER_SEC);
     pthread_mutex_unlock(&(process->mutex));
   }
 	return NULL;
@@ -199,6 +202,7 @@ unsigned int release_core_srtn(Process *next, Core *core, unsigned int cores)
     core[j].process->working = False;
     core[j].available = True;
     printf("Process '%s' (remaining time: %f) has been removed from CPU %u.\n", core[j].process->name, higher, j);
+    context_changes++;
     core[j].process = NULL;
     return 1;
   }

@@ -17,6 +17,7 @@ typedef struct process {
   float  duration;       /*CPU's real time consumed by the process in the simulation*/
   float  remaining;      /*Used by a few scheduling policies such as round robin to register remaining time*/
   float  deadline;       /*The maximum amount of time this process can take to finish*/
+  float  finish;         /*The simulation time the process finished his task*/
   int    priority;       /*Priority. An integer in the range [-20, 19]*/
   boolean working;       /*Process is running in a CPU?*/
   boolean    done;       /*CPU done with the process?*/
@@ -27,15 +28,18 @@ typedef struct process {
     are at indexes 0 to i - 1 of the array pointes by *process*/
   unsigned int total;      /*Total number of processes running*/
   struct process *process; /*All the processes*/
+  unsigned int *context_changes;
 } Process;
 
 /*Simulator Globals*/
-clock_t start;           /*Simulator initial time*/
-boolean paramd;          /*Register if the 4th optional parameter was passed*/
+clock_t start;                /*Simulator initial time*/
+boolean paramd;               /*Register if the 4th optional parameter was passed*/
+unsigned int context_changes; /*Times the simulator made a context change*/
 
 /*Simulator functions prototypes*/
 int run(char **, char *);
 Process *read_trace_file(Process *, char *, char *, unsigned int *);
+void write_output(Process *, char *, char *, unsigned int *);
 int initialize_mutex(Process *, unsigned int *);
 void free_mutex(Process *, unsigned int *);
 int is_blank(char c);

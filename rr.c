@@ -24,6 +24,8 @@ void *rr(void *args)
     list->process = NULL; list->next = list;
     initialize_cores_rr(core, cores);
 
+    context_changes = 0;
+    process->context_changes = &context_changes;
     start = clock();
     while(count != process->total) {
 
@@ -58,6 +60,7 @@ void *rr(void *args)
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->done = True;
+    process->finish = (((float)(clock() - start)) / CLOCKS_PER_SEC);
     pthread_mutex_unlock(&(process->mutex));
   }
 	return NULL;
@@ -221,6 +224,7 @@ void release_cores_rr(Process *process, unsigned int total, Core *core, unsigned
       for(j = 0; j < total; j++) if(core[i].process == &process[j]) {
         process[j].working = False;
         printf("Process '%s' has been removed from CPU %u. Quantum time expired (%f > 4.0s).\n", core[i].process->name, i, sec);
+        context_changes++;
         break;
       }
       core[i].available = True;
