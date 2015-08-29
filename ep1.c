@@ -7,12 +7,12 @@
 #include <semaphore.h>
 #include <time.h>
 #include <unistd.h>
-#include "ep1.h"
-#include "core.h"
-#include "fcfs.h"
-#include "sjf.h"
-#include "srtn.h"
-#include "rr.h"
+#include "headers/ep1.h"
+#include "headers/core.h"
+#include "headers/fcfs.h"
+#include "headers/sjf.h"
+#include "headers/srtn.h"
+#include "headers/rr.h"
 
 int run(char **argv, char *wd)
 {

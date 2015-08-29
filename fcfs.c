@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "ep1.h"
-#include "core.h"
-#include "fcfs.h"
+#include "headers/ep1.h"
+#include "headers/core.h"
+#include "headers/fcfs.h"
 
 /*First Come First Served*/
 void *fcfs(void *args)

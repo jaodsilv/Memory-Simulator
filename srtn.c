@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "ep1.h"
-#include "core.h"
-#include "srtn.h"
+#include "headers/ep1.h"
+#include "headers/core.h"
+#include "headers/srtn.h"
 
 /*Shortest Remaining Time Next*/
 void *srtn(void *args)

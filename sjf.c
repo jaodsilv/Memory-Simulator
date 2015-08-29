@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "ep1.h"
-#include "core.h"
-#include "sjf.h"
+#include "headers/ep1.h"
+#include "headers/core.h"
+#include "headers/sjf.h"
 
 /*Shortest Job First*/
 void *sjf(void *args)

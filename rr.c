@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "ep1.h"
-#include "core.h"
-#include "rr.h"
+#include "headers/ep1.h"
+#include "headers/core.h"
+#include "headers/rr.h"
 
 /*Round Robin*/
 void *rr(void *args)
