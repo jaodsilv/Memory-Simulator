@@ -13,6 +13,7 @@
 #include "headers/sjf.h"
 #include "headers/srtn.h"
 #include "headers/rr.h"
+#include "headers/ps.h"
 
 int run(char **argv, char *wd)
 {
@@ -85,6 +86,13 @@ int run(char **argv, char *wd)
       case PS:
         /*do PS*/
         printf("5. PS\n");
+        do_ps(threads, process, total);
+        printf("\n\n* * * * * * * * * *\n\n");
+        printf("PS simulation has finished. Writing output...\n");
+        write_output(process, wd, argv[2], total);
+        free(threads); threads = NULL;
+        free_mutex(process, total);
+        free(process); process = NULL;
         break;
       case RRTS:
         /*do RRTS*/
