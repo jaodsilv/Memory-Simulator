@@ -46,6 +46,7 @@ void *rr(void *args)
       count--;
     }
     fprintf(stderr, "Total context changes : %u\n", context_changes);
+    fprintf(stderr, "Simulation time: %fs\n", (((float)(clock() - start)) / CLOCKS_PER_SEC));
     free(core); core = NULL;
   }
 	else {
