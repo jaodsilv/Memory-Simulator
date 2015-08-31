@@ -142,9 +142,8 @@ void do_task_sjf(Process *process)
   clock_t duration = clock();
 
   while((sec = (((float)(clock() - duration)) / CLOCKS_PER_SEC)) < process->duration) {
-    if((dl = (((float)(clock() - start)) / CLOCKS_PER_SEC)) > process->deadline) {
-      /*printf("Process '%s' deadline. duration: %f  deadline: %f\n", process->name, dl, process->deadline);*/
-    }
+    if((dl = (((float)(clock() - start)) / CLOCKS_PER_SEC)) > process->deadline)
+      process->failed = True;
   }
 }
 

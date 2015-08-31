@@ -153,10 +153,8 @@ int do_task_srtn(Process *process)
       duration = clock();
     }
     if(!process->working) return 0;
-    if((dl = (((float)(clock() - start)) / CLOCKS_PER_SEC)) > process->deadline) {
-      /*TODO: Must print this only the first time*/
-      /*printf("Process '%s' deadline. duration: %f  deadline: %f\n", process->name, dl, process->deadline);*/
-    }
+    if((dl = (((float)(clock() - start)) / CLOCKS_PER_SEC)) > process->deadline)
+      process->failed = True;
   }
   return 1;
 }

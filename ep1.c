@@ -19,8 +19,6 @@ int run(char **argv, char *wd)
   Process *process, *p;
   process = malloc(100 * sizeof(*process));
 
-  printf("Run argument 3 = %s\n", argv[2]);
-
   if((p = read_trace_file(process, wd, argv[1], total)) == NULL) {
     free(process); process = NULL;
   }
@@ -252,6 +250,7 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
             process[j].arrived = False;
             process[j].done = False;
             process[j].working = False;
+            process[j].failed = False;
             process[j++].coordinator = False;
             if(j == size / 2) {
               process = realloc(process, (size * 2) * sizeof(*process));
@@ -282,9 +281,8 @@ int is_blank(char c)
 
 /*
 TODO:
-1) Escrever as mensagens de 'paramd' em stderr
-2) Outros 5 escalonamentos
-3) Readme
-4) Slides
-5) Escrever output
+1) Readme
+2) Slides
+3) execve/fork em ep1sh
+4) Mover checagem de argumentos do simulador de ep1sh.c para ep1.c
 */

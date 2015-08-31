@@ -20,6 +20,7 @@ typedef struct process {
   float  finish;         /*The simulation time the process finished his task*/
   int    priority;       /*Priority. An integer in the range [-20, 19]*/
   boolean working;       /*Process is running in a CPU?*/
+  boolean failed;        /*Process failed finishing execution before its deadline?*/
   boolean    done;       /*CPU done with the process?*/
   sem_t next_stage;      /*Stages of a process: Arrive -> working -> done*/
   pthread_mutex_t mutex; /*Safe reading/writing 'done' variable*/
