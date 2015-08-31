@@ -223,7 +223,8 @@ void release_cores_rr(Process *process, unsigned int total, Core *core, unsigned
       int j;
       for(j = 0; j < total; j++) if(core[i].process == &process[j]) {
         process[j].working = False;
-        fprintf(stderr, "Process '%s' has been removed from CPU %u. Quantum time expired (%f > 4.0s).\n", core[i].process->name, i, sec);
+        if(paramd)
+          fprintf(stderr, "Process '%s' has been removed from CPU %u. Quantum time expired (%f > 4.0s).\n", core[i].process->name, i, sec);
         context_changes++;
         break;
       }

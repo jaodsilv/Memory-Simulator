@@ -200,7 +200,8 @@ unsigned int release_core_edf(Process *next, Core *core, unsigned int cores)
   if(next->deadline < higher) {
     core[j].process->working = False;
     core[j].available = True;
-    fprintf(stderr, "Process '%s' (deadline: %f) has been removed from CPU %u.\n", core[j].process->name, higher, j);
+    if(paramd)
+      fprintf(stderr, "Process '%s' (deadline: %f) has been removed from CPU %u.\n", core[j].process->name, higher, j);
     context_changes++;
     core[j].process = NULL;
     return 1;

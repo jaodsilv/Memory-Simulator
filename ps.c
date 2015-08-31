@@ -200,7 +200,8 @@ unsigned int release_core_ps(Process *next, Core *core, unsigned int cores)
   if(next->priority > lower) {
     core[j].process->working = False;
     core[j].available = True;
-    fprintf(stderr, "Process '%s' (Priority: %d) has been removed from CPU %u.\n", core[j].process->name, lower, j);
+    if(paramd)
+      fprintf(stderr, "Process '%s' (Priority: %d) has been removed from CPU %u.\n", core[j].process->name, lower, j);
     context_changes++;
     core[j].process = NULL;
     return 1;

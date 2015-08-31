@@ -200,7 +200,8 @@ unsigned int release_core_srtn(Process *next, Core *core, unsigned int cores)
   if(next->remaining < higher) {
     core[j].process->working = False;
     core[j].available = True;
-    fprintf(stderr, "Process '%s' (remaining time: %f) has been removed from CPU %u.\n", core[j].process->name, higher, j);
+    if(paramd)
+      fprintf(stderr, "Process '%s' (remaining time: %f) has been removed from CPU %u.\n", core[j].process->name, higher, j);
     context_changes++;
     core[j].process = NULL;
     return 1;

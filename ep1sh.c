@@ -5,22 +5,7 @@
 #include <ctype.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-
-/*Prototypes*/
-char *get_cmd(char *, char *);
-int expand(char *);
-int cmd_ls(char *);
-int cmd_cd(char *, char *);
-int cmd_exit(char *);
-int cmd_ep(char *, char *);
-int cmd_show(char *);
-int cmd_pwd(char *, char *);
-void unrecognized(char *);
-void filter(char *, int, char *);
-int run(char **, char *);
-char **get_args(char *);
-void free_args(char **);
-/*************/
+#include "headers/ep1sh.h"
 
 /*ep1sh main loop.*/
 int main(int argc, char **argv)

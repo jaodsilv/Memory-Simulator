@@ -284,5 +284,4 @@ TODO:
 1) Readme
 2) Slides
 3) execve/fork em ep1sh
-4) Mover checagem de argumentos do simulador de ep1sh.c para ep1.c
 */
