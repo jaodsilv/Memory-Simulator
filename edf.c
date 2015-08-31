@@ -64,7 +64,7 @@ void use_core_edf(Process *process, Core *core, unsigned int cores)
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
-      if(paramd) fprintf(stderr, "Process '%s' assigned to core %d\n", core[i].process->name, i);
+      if(paramd) fprintf(stderr, "Process '%s' assigned to CPU %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
       break;
     }
