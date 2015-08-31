@@ -142,13 +142,11 @@ void do_ps(pthread_t *threads, Process *process, unsigned int *total)
 /*Running process*/
 int do_task_ps(Process *process)
 {
-  int i = 1;
   float sec, dl;
   clock_t duration = clock();
 
   while((sec = (((float)(clock() - duration)) / CLOCKS_PER_SEC)) < process->remaining) {
-    if(sec > (i / 10)) {
-      i++;
+    if(sec > 0.1) {
       process->remaining -= sec;
       duration = clock();
     }
