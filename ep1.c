@@ -1,12 +1,9 @@
-#define _XOPEN_SOURCE 500 /*To compile without nanosleep implicit declaration warning*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <time.h>
-#include <unistd.h>
 #include "headers/ep1.h"
 #include "headers/core.h"
 #include "headers/fcfs.h"
@@ -14,6 +11,7 @@
 #include "headers/srtn.h"
 #include "headers/rr.h"
 #include "headers/ps.h"
+#include "headers/edf.h"
 
 int run(char **argv, char *wd)
 {
@@ -94,9 +92,16 @@ int run(char **argv, char *wd)
         free_mutex(process, total);
         free(process); process = NULL;
         break;
-      case RRTS:
-        /*do RRTS*/
-        printf("6. RRTS\n");
+      case EDF:
+        /*do EDF*/
+        printf("6. EDF\n");
+        do_edf(threads, process, total);
+        printf("\n\n* * * * * * * * * *\n\n");
+        printf("EDF simulation has finished. Writing output...\n");
+        write_output(process, wd, argv[2], total);
+        free(threads); threads = NULL;
+        free_mutex(process, total);
+        free(process); process = NULL;
         break;
     }
   }

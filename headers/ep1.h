@@ -3,7 +3,7 @@
 #define SRTN 3       /*Shortest Remaining Time Next*/
 #define RR   4       /*Round Robin*/
 #define PS   5       /*Priority Scheduling*/
-#define RRTS 6       /*Rigid Real Time Scheduling (with rigid deadlines)*/
+#define EDF  6       /*Earliest Deadline First*/
 
 typedef int boolean;
 #define False 0
