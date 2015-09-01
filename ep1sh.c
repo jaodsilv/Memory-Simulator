@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <sys/wait.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "headers/ep1sh.h"
@@ -193,12 +194,25 @@ int cmd_cd(char *cmd, char *wd)
   return 0;
 }
 
-/*Check if user invoked /bin/ls -l command to ep1sh*/
+/*Check if user invoked '/bin/ls -l' binary to ep1sh*/
 int cmd_ls(char *cmd)
 {
-  if(strncmp(cmd, "/bin/ls -l", 10) == 0) {
-    if(system("/bin/ls -l") != 0) printf("Command not supported.\n");
-    return 1;
+  if(strncmp(cmd, "/bin/ls ", 8) == 0) {
+    int i;
+    for(i = 8; i < strlen(cmd); i++) {
+      if(cmd[i] == '-' && cmd[i + 1] == 'l') break;
+      else if(cmd[i] == ' ') continue;
+      else return 0;
+    }
+    if(fork() != 0) {
+      int *status = NULL;
+      waitpid(-1, status, 0);
+      return 1;
+    }
+    else {
+      char *argument[] = {"/bin/ls", "-l", NULL};
+      execve("/bin/ls", argument, NULL);
+    }
   }
   return 0;
 }
