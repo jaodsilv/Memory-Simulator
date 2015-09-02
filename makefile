@@ -1,5 +1,8 @@
 ep1sh: ep1sh.o ep1.o sjf.o fcfs.o rr.o srtn.o ps.o edf.o
-	gcc -o ep1sh ep1sh.o ep1.o sjf.o fcfs.o rr.o srtn.o ps.o edf.o -lreadline -pthread -g
+	gcc -o ep1sh ep1sh.o -lreadline -g
+
+ep1: ep1.o sjf.o fcfs.o rr.o srtn.o ps.o edf.o
+	gcc -o ep1 ep1.o sjf.o fcfs.o rr.o srtn.o ps.o edf.o -pthread -g
 
 ep1sh.o: ep1sh.c
 	gcc -c ep1sh.c -Wall -ansi
@@ -31,3 +34,6 @@ clean:
 	rm -rf outputs/*.txt
 	rm -rf a.out
 	rm ep1sh
+	rm ep1
+
+all: ep1sh ep1

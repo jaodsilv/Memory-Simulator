@@ -8,6 +8,3 @@ int cmd_show(char *);
 int cmd_pwd(char *, char *);
 void unrecognized(char *);
 void filter(char *, int, char *);
-int run(char **, char *);
-char **get_args(char *);
-void free_args(char **);

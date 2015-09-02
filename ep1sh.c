@@ -42,91 +42,54 @@ int main(int argc, char **argv)
   return 0;
 }
 
-/*Runs the simulator using the "./ep1 <args>" command*/
+/*Calls the simulator binary using the "./ep1 <args>" command*/
 int cmd_ep(char *cmd, char *wd)
 {
   if(strncmp(cmd, "./ep1", 5) == 0) {
-    char **args = NULL; int check = 0, i;
+    char number[8], input[256], output[256], optional[4];
+    int count = 0, i, j = 0;
 
-    for(i = 5; i < strlen(cmd) && check == 0; i++)
-      if(cmd[i] != ' ' && cmd[i] != '\0')
-        check = 1;
+    number[0] = '\0'; input[0] = '\0'; output[0] = '\0';
+    optional[0] = '\0'; optional[1] = '\0';
+    for(i = 5; i < strlen(cmd) && count < 4; i++) {
+        if(isspace(cmd[i])) continue;
+        while(!isspace(cmd[i]) && cmd[i] != '\0') {
+          if(count == 0) {
+            number[j++] = cmd[i++];
+            number[j] = '\0';
+            if(j == 7 || i >= strlen(cmd)) break;
+          }
+          else if(count == 1) {
+            input[j++] = cmd[i++];
+            input[j] = '\0';
+            if(j == 255 || i >= strlen(cmd)) break;
+          }
+          else if(count == 2) {
+            output[j++] = cmd[i++];
+            output[j] = '\0';
+            if(j == 255 || i >= strlen(cmd)) break;
+          }
+          else /*count == 3 */ {
+            optional[j++] = cmd[i++];
+            if(cmd[i] != '\0') optional[j++] = cmd[i];
+            optional[j] = '\0';
+            break;
+          }
+        }
+        j = 0; count++;
+    }
 
-    if(strlen(cmd) < 6 || check == 0)
-      printf("Expected arguments for ./ep1.\n");
-    else if(check == 1 && ((args = get_args(cmd)) == NULL))
-      printf("Bad arguments for ./ep1.\n");
-    else if(check == 1 && run(args, wd) < 0);
-    if(args != NULL) free_args(args);
-    return 1;
+    if(fork() != 0) {
+      int status;
+      waitpid(-1, &status, 0);
+      return 1;
+    }
+    else {
+      char *arguments[] = {"./ep1", number, input, output, optional, wd, NULL};
+      execve("./ep1", arguments, NULL);
+    }
   }
   return 0;
-}
-
-/*Get arguments for ./ep1 to send them correctly*/
-char **get_args(char *cmd)
-{
-  char **args;
-  int arg = 0, i, j;
-
-  args = malloc(4 * sizeof(*args));
-  args[0] = malloc(2 * sizeof(**args));
-  args[1] = malloc(64 * sizeof(**args));
-  args[2] = malloc(64 * sizeof(**args));
-  args[3] = NULL;
-
-  /*Get 1st argument*/
-  for(i = 5; isspace(cmd[i]); i++) continue;
-  for(j = 0; i < strlen(cmd) && !isspace(cmd[i]); i++) {
-    if(isdigit(cmd[i]) && j > 0) { arg = -1; break; }
-    else if(isdigit(cmd[i]) && j == 0 && cmd[i] >= '1' && cmd[i] <= '6') {
-      args[0][j] = cmd[i]; args[0][j + 1] = '\0'; arg++;
-      j++;
-    }
-  }
-  /*Get 2nd argument*/
-  if(arg == 1) {
-    while(isspace(cmd[i])) { i++; continue; }
-    if(cmd[i] != '\0') {
-      for(j = 0; i < strlen(cmd) && !isspace(cmd[i]) && j < 64; i++, j++)
-        args[1][j] = cmd[i];
-      if(j < 64) { args[1][j] = '\0'; arg++; }
-      else arg = -1;
-    }
-    else arg = -1;
-  }
-  /*Get 3rd argument*/
-  if(arg == 2) {
-    while(isspace(cmd[i])) { i++; continue; }
-    if(cmd[i] != '\0') {
-      for(j = 0; i < strlen(cmd) && !isspace(cmd[i]) && j < 64; i++, j++)
-        args[2][j] = cmd[i];
-      if(j < 64) { args[2][j] = '\0'; arg++; }
-      else arg = -1;
-    }
-    else arg = -1;
-  }
-  /*Get the optional 4th argument*/
-  if(arg == 3) {
-    while(isspace(cmd[i])) { i++; continue; }
-    if(cmd[i] == 'd' && (cmd[i + 1] == '\0' || isspace(cmd[i + 1]))) {
-      args[3] = malloc(2 * sizeof(**args));
-      args[3][0] = 'd'; args[3][1] = '\0'; arg++;
-    }
-  }
-
-  if(arg == 3 || arg == 4) return args;
-  else { free_args(args); return NULL; }
-}
-
-/*Frees the memory allocated by ep1 arguments*/
-void free_args(char **args)
-{
-  int i;
-  for(i = 0; i < 3; i++) {
-    free(args[i]); args[i] = NULL;
-  }
-  free(args); args = NULL;
 }
 
 /*Shows commands in history list*/
@@ -210,8 +173,8 @@ int cmd_ls(char *cmd)
       return 1;
     }
     else {
-      char *argument[] = {"/bin/ls", "-l", NULL};
-      execve("/bin/ls", argument, NULL);
+      char *arguments[] = {"/bin/ls", "-l", NULL};
+      execve("/bin/ls", arguments, NULL);
     }
   }
   return 0;

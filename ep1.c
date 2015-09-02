@@ -13,6 +13,41 @@
 #include "headers/ps.h"
 #include "headers/edf.h"
 
+int main(int argc, char **argv)
+{
+  char **args = NULL;
+  int i;
+
+  if(argv[3][0] == '\0') {
+    fprintf(stderr, "\nep1 error: unitialized expected arguments\n");
+    return 1;
+  }
+  for(i = 0; i < strlen(argv[1]); i++) if(!isdigit(argv[1][i])) {
+    fprintf(stderr, "\nep1 error: expected integer first argument\n");
+    return 1;
+  }
+  if(argv[1][0] < '1' || argv[1][0] > '6' || argv[1][1] != '\0') {
+    fprintf(stderr, "\nep1 error: first argument must be an integer from 1 to 6\n");
+    return 1;
+  }
+  if((argv[4][0] != '\0' && argv[4][0] != 'd') || (argv[4][0] == 'd' && argv[4][1] != '\0')) {
+    fprintf(stderr, "\nep1 error: the only valid value for the optional argument is 'd'\n");
+    return 1;
+  }
+
+  args = malloc(4 * sizeof(*args));
+  args[0] = argv[1];
+  args[1] = argv[2];
+  args[2] = argv[3];
+  args[3] = argv[4];
+
+  /*run process simulator*/
+  run(args, argv[5]);
+
+  free(args); args = NULL;
+  return 0;
+}
+
 int run(char **argv, char *wd)
 {
   unsigned int all = 0, *total = &all;
@@ -24,7 +59,7 @@ int run(char **argv, char *wd)
   }
   else process = p;
 
-  if(argv[3] != NULL) paramd = True;
+  if(argv[3][0] == 'd') paramd = True;
   else paramd = False;
 
   if(process != NULL) {
