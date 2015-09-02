@@ -34,6 +34,7 @@ typedef struct process {
 
 /*Simulator Globals*/
 clock_t start;                /*Simulator initial time*/
+clock_t finish;               /*Simulator initial time*/
 boolean paramd;               /*Register if the 4th optional parameter was passed*/
 unsigned int context_changes; /*Times the simulator made a context change*/
 

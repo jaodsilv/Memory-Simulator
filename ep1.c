@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -15,9 +16,13 @@
 
 int main(int argc, char **argv)
 {
-  char **args = NULL;
+  char **args = NULL, wd[256] = "";
   int i;
 
+  if(argc > 5 || argc < 4) {
+    fprintf(stderr, "\nep1 error: wrong number of arguments.\n");
+    return 1;
+  }
   if(argv[3][0] == '\0') {
     fprintf(stderr, "\nep1 error: unitialized expected arguments\n");
     return 1;
@@ -30,8 +35,14 @@ int main(int argc, char **argv)
     fprintf(stderr, "\nep1 error: first argument must be an integer from 1 to 6\n");
     return 1;
   }
-  if((argv[4][0] != '\0' && argv[4][0] != 'd') || (argv[4][0] == 'd' && argv[4][1] != '\0')) {
-    fprintf(stderr, "\nep1 error: the only valid value for the optional argument is 'd'\n");
+  if(argc == 5) {
+    if((argv[4][0] != '\0' && argv[4][0] != 'd') || (argv[4][0] == 'd' && argv[4][1] != '\0')) {
+      fprintf(stderr, "\nep1 error: the only valid value for the optional argument is 'd'\n");
+      return 1;
+    }
+  }
+  if(getcwd(wd, sizeof(wd)) == NULL) {
+    fprintf(stderr, "ep1 error: couldn't get working directory.\n");
     return 1;
   }
 
@@ -39,10 +50,11 @@ int main(int argc, char **argv)
   args[0] = argv[1];
   args[1] = argv[2];
   args[2] = argv[3];
-  args[3] = argv[4];
+  if(argc == 5) args[3] = argv[4];
+  else args[3] = "\0";
 
   /*run process simulator*/
-  run(args, argv[5]);
+  run(args, wd);
 
   free(args); args = NULL;
   return 0;
@@ -75,7 +87,7 @@ int run(char **argv, char *wd)
         printf("1. FCFS\n");
         do_fcfs(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("FCFS simulation has finished. Writing output...\n");
+        printf("FCFS simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -86,7 +98,7 @@ int run(char **argv, char *wd)
         printf("2. SJF\n");
         do_sjf(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("SJF simulation has finished. Writing output...\n");
+        printf("SJF simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -97,7 +109,7 @@ int run(char **argv, char *wd)
         printf("3. SRTN\n");
         do_srtn(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("SRTN simulation has finished. Writing output...\n");
+        printf("SRTN simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -108,7 +120,7 @@ int run(char **argv, char *wd)
         printf("4. RR\n");
         do_rr(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("RR simulation has finished. Writing output...\n");
+        printf("RR simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -119,7 +131,7 @@ int run(char **argv, char *wd)
         printf("5. PS\n");
         do_ps(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("PS simulation has finished. Writing output...\n");
+        printf("PS simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -130,7 +142,7 @@ int run(char **argv, char *wd)
         printf("6. EDF\n");
         do_edf(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("EDF simulation has finished. Writing output...\n");
+        printf("EDF simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);

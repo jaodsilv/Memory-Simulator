@@ -30,7 +30,7 @@ int main(int argc, char **argv)
       if(cmd_ls(cmd));
       else if(cmd_cd(cmd, wd));
       else if(cmd_show(cmd));
-      else if(cmd_ep(cmd, wd));
+      else if(cmd_ep(cmd));
       else if(cmd_exit(cmd)) exit = 1;
       else if(cmd_pwd(cmd, wd));
       else unrecognized(cmd);
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 }
 
 /*Calls the simulator binary using the "./ep1 <args>" command*/
-int cmd_ep(char *cmd, char *wd)
+int cmd_ep(char *cmd)
 {
   if(strncmp(cmd, "./ep1", 5) == 0) {
     char number[8], input[256], output[256], optional[4];
@@ -85,7 +85,7 @@ int cmd_ep(char *cmd, char *wd)
       return 1;
     }
     else {
-      char *arguments[] = {"./ep1", number, input, output, optional, wd, NULL};
+      char *arguments[] = {"./ep1", number, input, output, optional, NULL};
       execve("./ep1", arguments, NULL);
     }
   }

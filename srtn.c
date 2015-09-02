@@ -32,8 +32,8 @@ void *srtn(void *args)
       count = finished_processes_srtn(process->process, process->total);
       available_cores = check_cores_available_srtn(core, cores);
     }
-    fprintf(stderr, "Total context changes : %u\n", context_changes);
-    fprintf(stderr, "Simulation time: %fs\n", (((float)(clock() - start)) / CLOCKS_PER_SEC));
+    finish = ((clock() - start));
+    if(paramd) fprintf(stderr, "Total context changes : %u\n", context_changes);
     free(core); core = NULL;
   }
 	else {
