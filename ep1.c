@@ -325,10 +325,3 @@ int is_blank(char c)
 {
   return c == ' ' || c == '\t';
 }
-
-/*
-TODO:
-1) Readme
-2) Slides
-3) execve/fork em ep1sh
-*/

@@ -18,7 +18,7 @@ typedef struct process {
   float  remaining;            /*Used by a few scheduling policies such as round robin to register remaining time*/
   float  deadline;             /*The maximum amount of time this process can take to finish*/
   float  finish_cpu_time;      /*The simulation cpu time the process finished his task*/
-  float  finish_cpu_wall_time; /*The simulation elapsed time the process finished his task*/
+  float  finish_elapsed_time;  /*The simulation elapsed time the process finished his task*/
   int    priority;             /*Priority. An integer in the range [-20, 19]*/
   boolean working;             /*Process is running in a CPU?*/
   boolean failed;              /*Process failed finishing execution before its deadline?*/

@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 199309L  /*clock_gettime*/
+#include <math.h>                /*abs*/
 #include <time.h>
 #include <semaphore.h>
 #include <pthread.h>
@@ -14,6 +15,7 @@ void *sjf(void *args)
 {
   Process *process = ((Process*) args);
 
+  /*Coordinator Thread*/
 	if(process->coordinator) {
     unsigned int available_cores, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
     Core *core;
@@ -21,10 +23,12 @@ void *sjf(void *args)
     core = malloc(cores * sizeof(*core));
     initialize_cores_sjf(core, cores);
 
+    /*Initialize simulator globals*/
     context_changes = 0;
     process->context_changes = &context_changes;
     clock_gettime(CLOCK_REALTIME, &start_elapsed_time);
     start_cpu_time = clock();
+    /*Start simulation*/
     while(count != process->total) {
       Process *next = NULL;
 
@@ -35,6 +39,7 @@ void *sjf(void *args)
       available_cores = check_cores_available_sjf(core, cores);
     }
 
+    /*Get simulation ending time*/
     finish_cpu_time = ((clock() - start_cpu_time));
     clock_gettime(CLOCK_REALTIME, &finish_elapsed_time);
     finish_elapsed_time.tv_sec = finish_elapsed_time.tv_sec - start_elapsed_time.tv_sec;
@@ -43,20 +48,30 @@ void *sjf(void *args)
     else
       finish_elapsed_time.tv_nsec = start_elapsed_time.tv_nsec - finish_elapsed_time.tv_nsec;
 
-    if(paramd) fprintf(stderr, "Total context changes : %u\n", context_changes);
+    if(paramd) fprintf(stderr, "Total context changes: %u\n", context_changes);
     free(core); core = NULL;
   }
+  /*Other threads*/
 	else {
+    struct timespec time;
     /*Wait the system know the process has arrived*/
     sem_wait(&(process->next_stage));
     /*Wait the system assigns a CPU to the process*/
     sem_wait(&(process->next_stage));
-    /*do task here*/
+    /*Perform a task*/
     do_task_sjf(process);
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
-    process->done = True;
     process->finish_cpu_time = (((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC);
+    clock_gettime(CLOCK_REALTIME, &time);
+    time.tv_sec = time.tv_sec - start_elapsed_time.tv_sec;
+    if(time.tv_nsec > start_elapsed_time.tv_nsec)
+      time.tv_nsec = time.tv_nsec - start_elapsed_time.tv_nsec;
+    else
+      time.tv_nsec = start_elapsed_time.tv_nsec - time.tv_nsec;
+
+    process->finish_elapsed_time = (float)time.tv_sec + ((float)time.tv_nsec / 1000000000 );
+    process->done = True;
     pthread_mutex_unlock(&(process->mutex));
   }
 	return NULL;
@@ -88,7 +103,7 @@ unsigned int check_cores_available_sjf(Core *core, unsigned int cores)
       /*Mutex to read 'done' safely*/
       pthread_mutex_lock(&(core[i].process->mutex));
       if(core[i].process->done) {
-        if(paramd) fprintf(stderr, "Process '%s' has released CPU %u.\n", core[i].process->name, i);
+        if(paramd) fprintf(stderr, "Process '%s' has released CPU %u\n", core[i].process->name, i);
         core[i].available = True;
       }
       pthread_mutex_unlock(&(core[i].process->mutex));
@@ -110,8 +125,8 @@ unsigned int finished_processes_sjf(Process *process, unsigned int total)
       count++;
       if(process[i].working) {
         process[i].working = False;
-        if(paramd) fprintf(stderr, "Process '%s' is done. Line '%s %f %f' will be written in the output file.\n",
-        process[i].name, process[i].name, process[i].finish_cpu_time, process[i].finish_cpu_time - process[i].arrival);
+        if(paramd) fprintf(stderr, "Process '%s' is done. Line '%s %f %f' will be written to the output file\n",
+        process[i].name, process[i].name, process[i].finish_elapsed_time, process[i].finish_elapsed_time - process[i].arrival);
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -150,21 +165,43 @@ void do_sjf(pthread_t *threads, Process *process, unsigned int *total)
 /*Running process*/
 void do_task_sjf(Process *process)
 {
-  float sec, dl;
-  clock_t duration = clock();
+  struct timespec duration, now;
+  clock_gettime(CLOCK_REALTIME, &duration);
 
-  while((sec = (((float)(clock() - duration)) / CLOCKS_PER_SEC)) < process->duration) {
-    if((dl = (((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC)) > process->deadline)
-      process->failed = True;
+  while(process->remaining > 0) {
+    clock_gettime(CLOCK_REALTIME, &now);
+    if(abs(now.tv_nsec - duration.tv_nsec) > 25000000) {
+      process->remaining -= 0.025;
+      clock_gettime(CLOCK_REALTIME, &duration);
+    }
   }
+
+  clock_gettime(CLOCK_REALTIME, &duration);
+  duration.tv_sec = duration.tv_sec - start_elapsed_time.tv_sec;
+  if(duration.tv_nsec > start_elapsed_time.tv_nsec)
+    duration.tv_nsec = duration.tv_nsec - start_elapsed_time.tv_nsec;
+  else
+    duration.tv_nsec = start_elapsed_time.tv_nsec - duration.tv_nsec;
+
+  if((float)duration.tv_sec + ((float)duration.tv_nsec / 1000000000 ) > process->deadline)
+    process->failed = True;
 }
 
 /*Look up for new processes*/
 void fetch_process_sjf(Process *process, unsigned int total)
 {
+  float sec;
   unsigned int i;
-  float sec = ((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC;
+  struct timespec time;
 
+  clock_gettime(CLOCK_REALTIME, &time);
+  time.tv_sec = time.tv_sec - start_elapsed_time.tv_sec;
+  if(time.tv_nsec > start_elapsed_time.tv_nsec)
+    time.tv_nsec = time.tv_nsec - start_elapsed_time.tv_nsec;
+  else
+    time.tv_nsec = start_elapsed_time.tv_nsec - time.tv_nsec;
+
+  sec = (float)time.tv_sec + ((float)time.tv_nsec / 1000000000 );
   for(i = 0; i < total; i++)
     if(sec >= process[i].arrival && !process[i].arrived) {
       process[i].arrived = True;
