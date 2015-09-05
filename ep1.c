@@ -87,7 +87,7 @@ int run(char **argv, char *wd)
         printf("1. FCFS\n");
         do_fcfs(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("FCFS simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
+        printf("FCFS simulation has finished in:\nCPU Time: %fs\nReal: %d.%ds\nWriting output...\n", ((float)finish_cpu_time / CLOCKS_PER_SEC), (int)finish_elapsed_time.tv_sec, (int)finish_elapsed_time.tv_nsec);
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -98,7 +98,7 @@ int run(char **argv, char *wd)
         printf("2. SJF\n");
         do_sjf(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("SJF simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
+        printf("SJF simulation has finished in:\nCPU Time: %fs\nReal: %d.%ds\nWriting output...\n", ((float)finish_cpu_time / CLOCKS_PER_SEC), (int)finish_elapsed_time.tv_sec, (int)finish_elapsed_time.tv_nsec);
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -109,7 +109,7 @@ int run(char **argv, char *wd)
         printf("3. SRTN\n");
         do_srtn(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("SRTN simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
+        printf("SRTN simulation has finished in:\nCPU Time: %fs\nReal: %d.%ds\nWriting output...\n", ((float)finish_cpu_time / CLOCKS_PER_SEC), (int)finish_elapsed_time.tv_sec, (int)finish_elapsed_time.tv_nsec);
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -120,7 +120,7 @@ int run(char **argv, char *wd)
         printf("4. RR\n");
         do_rr(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("RR simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
+        printf("RR simulation has finished in:\nCPU Time: %fs\nReal: %d.%ds\nWriting output...\n", ((float)finish_cpu_time / CLOCKS_PER_SEC), (int)finish_elapsed_time.tv_sec, (int)finish_elapsed_time.tv_nsec);
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -131,7 +131,7 @@ int run(char **argv, char *wd)
         printf("5. PS\n");
         do_ps(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("PS simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
+        printf("PS simulation has finished in:\nCPU Time: %fs\nReal: %d.%ds\nWriting output...\n", ((float)finish_cpu_time / CLOCKS_PER_SEC), (int)finish_elapsed_time.tv_sec, (int)finish_elapsed_time.tv_nsec);
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -142,7 +142,7 @@ int run(char **argv, char *wd)
         printf("6. EDF\n");
         do_edf(threads, process, total);
         printf("\n\n* * * * * * * * * *\n\n");
-        printf("EDF simulation has finished in %f. Writing output...\n", ((float)finish / CLOCKS_PER_SEC));
+        printf("EDF simulation has finished in:\nCPU Time: %fs\nReal: %d.%ds\nWriting output...\n", ((float)finish_cpu_time / CLOCKS_PER_SEC), (int)finish_elapsed_time.tv_sec, (int)finish_elapsed_time.tv_nsec);
         write_output(process, wd, argv[2], total);
         free(threads); threads = NULL;
         free_mutex(process, total);
@@ -167,7 +167,7 @@ void write_output(Process *process, char *wd, char *tfile, unsigned int *total)
   if((fptr = fopen(output, "w")) != NULL) {
     unsigned int i;
     for(i = 0; i < *total; i++)
-      fprintf(fptr, "%s %f %f\n", process[i].name, process[i].finish, process[i].finish - process[i].arrival);
+      fprintf(fptr, "%s %f %f\n", process[i].name, process[i].finish_cpu_time, process[i].finish_cpu_time - process[i].arrival);
     fprintf(fptr, "%u\n", *process[i].context_changes);
     fclose(fptr);
     printf("Done!\nYour output file can be found in '%s'.\n", output);

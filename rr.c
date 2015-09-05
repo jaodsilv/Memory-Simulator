@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 199309L  /*clock_gettime*/
+#include <time.h>
 #include <semaphore.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -26,7 +28,8 @@ void *rr(void *args)
 
     context_changes = 0;
     process->context_changes = &context_changes;
-    start = clock();
+    clock_gettime(CLOCK_REALTIME, &start_elapsed_time);
+    start_cpu_time = clock();
     while(count != process->total) {
 
       if(process->total - count > cores)
@@ -45,7 +48,14 @@ void *rr(void *args)
       list = r;
       count--;
     }
-    finish = ((clock() - start));
+    finish_cpu_time = ((clock() - start_cpu_time));
+    clock_gettime(CLOCK_REALTIME, &finish_elapsed_time);
+    finish_elapsed_time.tv_sec = finish_elapsed_time.tv_sec - start_elapsed_time.tv_sec;
+    if(finish_elapsed_time.tv_nsec > start_elapsed_time.tv_nsec)
+      finish_elapsed_time.tv_nsec = finish_elapsed_time.tv_nsec - start_elapsed_time.tv_nsec;
+    else
+      finish_elapsed_time.tv_nsec = start_elapsed_time.tv_nsec - finish_elapsed_time.tv_nsec;
+
     if(paramd) fprintf(stderr, "Total context changes : %u\n", context_changes);
     free(core); core = NULL;
   }
@@ -62,7 +72,7 @@ void *rr(void *args)
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->done = True;
-    process->finish = (((float)(clock() - start)) / CLOCKS_PER_SEC);
+    process->finish_cpu_time = (((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC);
     pthread_mutex_unlock(&(process->mutex));
   }
 	return NULL;
@@ -118,7 +128,7 @@ unsigned int finished_processes_rr(Process *process, unsigned int total)
       if(process[i].working) {
         process[i].working = False;
         if(paramd) fprintf(stderr, "Process '%s' is done. Line '%s %f %f' will be written in the output file.\n",
-        process[i].name, process[i].name, process[i].finish, process[i].finish - process[i].arrival);
+        process[i].name, process[i].name, process[i].finish_cpu_time, process[i].finish_cpu_time - process[i].arrival);
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -165,7 +175,7 @@ int do_task_rr(Process *process)
       process->remaining -= sec;
       return 0;
     }
-    if((dl = (((float)(clock() - start)) / CLOCKS_PER_SEC)) > process->deadline)
+    if((dl = (((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC)) > process->deadline)
       process->failed = True;
   }
   return 1;
@@ -176,7 +186,7 @@ void fetch_process_rr(Process *process, unsigned int total, Rotation *list)
 {
   Rotation *next;
   unsigned int i;
-  float sec = ((float)(clock() - start)) / CLOCKS_PER_SEC;
+  float sec = ((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC;
 
   next = list;
   while(next->next != list) next = next->next;
