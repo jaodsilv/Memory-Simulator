@@ -167,7 +167,7 @@ void write_output(Process *process, char *wd, char *tfile, unsigned int *total)
   if((fptr = fopen(output, "w")) != NULL) {
     unsigned int i;
     for(i = 0; i < *total; i++)
-      fprintf(fptr, "%s %f %f\n", process[i].name, process[i].finish_cpu_time, process[i].finish_cpu_time - process[i].arrival);
+      fprintf(fptr, "%s %f %f\n", process[i].name, process[i].finish_elapsed_time, process[i].finish_elapsed_time - process[i].arrival);
     fprintf(fptr, "%u\n", *process[i].context_changes);
     fclose(fptr);
     printf("Done!\nYour output file can be found in '%s'.\n", output);

@@ -9,6 +9,8 @@ input_name=$2
 output_name=$3
 runs=$4
 
+# execute the ep1 'runs' times
+
 count=1
 while [ $count -le $runs ]; do
   run=$(($count - 1))
@@ -36,33 +38,26 @@ while [ $count -le $runs ]; do
 done
 
 #get the mean of both output time values (ending time and duration)
-
-echo $'\n'-----------------------------------------$'\n'$'\n'Bash Script output:$'\n'
-
 i=0
 while [ $i -lt $total_process ]; do
-  echo "process "$(($i + 1)) mean:
   process_finished_mean[$i]=$(echo "${process_finished_all_runs[$i]}/$runs" | bc -l )
   process_duration_mean[$i]=$(echo "${process_duration_all_runs[$i]}/$runs" | bc -l )
-  # Mean of process i
-  echo finished_mean: ${process_finished_mean[$i]} duration_mean: ${process_duration_mean[$i]}
   let i=i+1
 done
 
 #get the standard deviation
 i=0
 while [ $i -lt $total_process ]; do
-  echo "process "$(($i + 1)) standard deviation '('sd')':
   process_finished_sd[$i]=0
   process_duration_sd[$i]=0
   j=0
   while [ $j -lt $runs ]; do
-    term[$i]=$(echo "${process_finished[$i,$j]}-${process_finished_mean[$i]}" | bc -l )
-    term[$i]=$(echo "${term[$i]}*${term[$i]}" | bc -l )
-    process_finished_sd[$i]=$(echo "${process_finished_sd[$i]}+${term[$i]}" | bc -l )
-    term[$i]=$(echo "${process_duration[$i,$j]}-${process_duration_mean[$i]}" | bc -l )
-    term[$i]=$(echo "${term[$i]}*${term[$i]}" | bc -l )
-    process_duration_sd[$i]=$(echo "${process_duration_sd[$i]}+${term[$i]}" | bc -l )
+    fterm[$i]=$(echo "${process_finished[$i,$j]}-${process_finished_mean[$i]}" | bc -l )
+    fterm[$i]=$(echo "${fterm[$i]}*${fterm[$i]}" | bc -l )
+    process_finished_sd[$i]=$(echo "${process_finished_sd[$i]}+${fterm[$i]}" | bc -l )
+    dterm[$i]=$(echo "${process_duration[$i,$j]}-${process_duration_mean[$i]}" | bc -l )
+    dterm[$i]=$(echo "${dterm[$i]}*${dterm[$i]}" | bc -l )
+    process_duration_sd[$i]=$(echo "${process_duration_sd[$i]}+${dterm[$i]}" | bc -l )
     let j=j+1
   done
   # Variances of process i
@@ -71,6 +66,34 @@ while [ $i -lt $total_process ]; do
   # SDs of process i
   process_finished_sd[$i]=$(echo "sqrt(${process_finished_sd[$i]})" | bc -l )
   process_duration_sd[$i]=$(echo "sqrt(${process_duration_sd[$i]})" | bc -l )
-  echo finished_sd: ${process_finished_sd[$i]} duration_sd: ${process_duration_sd[$i]}
+  let i=i+1
+done
+
+#get the confidence interval of 95%
+i=0
+while [ $i -lt $total_process ]; do
+  # lower endpoint
+  process_finished_lower_endpoint[$i]=$(echo "-1.96*${process_finished_sd[$i]}" | bc -l )
+  process_finished_lower_endpoint[$i]=$(echo "${process_finished_lower_endpoint[$i]}/sqrt($total_process)" | bc -l )
+  process_finished_lower_endpoint[$i]=$(echo "${process_finished_lower_endpoint[$i]}+${process_finished_mean[$i]}" | bc -l )
+  process_duration_lower_endpoint[$i]=$(echo "-1.96*${process_duration_sd[$i]}" | bc -l )
+  process_duration_lower_endpoint[$i]=$(echo "${process_duration_lower_endpoint[$i]}/sqrt($total_process)" | bc -l )
+  process_duration_lower_endpoint[$i]=$(echo "${process_duration_lower_endpoint[$i]}+${process_duration_mean[$i]}" | bc -l )
+  # upper endpoint
+  process_finished_upper_endpoint[$i]=$(echo "1.96*${process_finished_sd[$i]}" | bc -l )
+  process_finished_upper_endpoint[$i]=$(echo "${process_finished_upper_endpoint[$i]}/sqrt($total_process)" | bc -l )
+  process_finished_upper_endpoint[$i]=$(echo "${process_finished_upper_endpoint[$i]}+${process_finished_mean[$i]}" | bc -l )
+  process_duration_upper_endpoint[$i]=$(echo "1.96*${process_duration_sd[$i]}" | bc -l )
+  process_duration_upper_endpoint[$i]=$(echo "${process_duration_upper_endpoint[$i]}/sqrt($total_process)" | bc -l )
+  process_duration_upper_endpoint[$i]=$(echo "${process_duration_upper_endpoint[$i]}+${process_duration_mean[$i]}" | bc -l )
+  let i=i+1
+done
+
+# prints mean | SD | CI of each process i
+i=0
+echo $'\n'process i MEAN '/' SD '/' CI. "(F) stands for finished and (D) for duration":
+while [ $i -lt $total_process ]; do
+  echo "(F) process"$(($i + 1)) ${process_finished_mean[$i]} '/' ${process_finished_sd[$i]} '/' '['${process_finished_lower_endpoint[$i]}, ${process_finished_upper_endpoint[$i]}']'
+  echo "(D) process"$(($i + 1)) ${process_duration_mean[$i]} '/' ${process_duration_sd[$i]} '/' '['${process_duration_lower_endpoint[$i]}, ${process_duration_upper_endpoint[$i]}']'
   let i=i+1
 done
