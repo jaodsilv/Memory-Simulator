@@ -29,7 +29,7 @@ sjf.o: source/sjf.c
 	gcc -c source/sjf.c -Wall -ansi
 
 clean:
-	rm -rf source/obj/*
+	rm -rf source/obj/*.o
 	rm -rf source/*~
 	rm -rf outputs/*.txt
 	rm -rf a.out
