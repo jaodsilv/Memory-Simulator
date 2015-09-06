@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "headers/ep1.h"
-#include "headers/core.h"
-#include "headers/edf.h"
+#include "../headers/ep1.h"
+#include "../headers/core.h"
+#include "../headers/edf.h"
 
 /*Earliest Deadline First*/
 void *edf(void *args)

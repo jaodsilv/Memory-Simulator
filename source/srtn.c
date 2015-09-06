@@ -6,12 +6,12 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "headers/ep1.h"
-#include "headers/core.h"
-#include "headers/ps.h"
+#include "../headers/ep1.h"
+#include "../headers/core.h"
+#include "../headers/srtn.h"
 
-/*Priority Scheduling (Preemptive)*/
-void *ps(void *args)
+/*Shortest Remaining Time Next*/
+void *srtn(void *args)
 {
   Process *process = ((Process*) args);
 
@@ -21,7 +21,7 @@ void *ps(void *args)
     Core *core;
 
     core = malloc(cores * sizeof(*core));
-    initialize_cores_ps(core, cores);
+    initialize_cores_srtn(core, cores);
 
     /*Initialize simulator globals*/
     context_changes = 0;
@@ -32,12 +32,12 @@ void *ps(void *args)
     while(count != process->total) {
       Process *next = NULL;
 
-      fetch_process_ps(process->process, process->total);
-      next = select_ps(process->process, process->total);
-      if(next != NULL && available_cores == 0) available_cores = release_core_ps(next, core, cores);
-      if(next != NULL && available_cores > 0) use_core_ps(next, core, cores);
-      count = finished_processes_ps(process->process, process->total);
-      available_cores = check_cores_available_ps(core, cores);
+      fetch_process_srtn(process->process, process->total);
+      next = select_srtn(process->process, process->total);
+      if(next != NULL && available_cores == 0) available_cores = release_core_srtn(next, core, cores);
+      if(next != NULL && available_cores > 0) use_core_srtn(next, core, cores);
+      count = finished_processes_srtn(process->process, process->total);
+      available_cores = check_cores_available_srtn(core, cores);
     }
 
     /*Get simulation ending time*/
@@ -62,7 +62,7 @@ void *ps(void *args)
     while(!completed) {
       sem_wait(&(process->next_stage));
       /*Perform a task*/
-      completed = do_task_ps(process);
+      completed = do_task_srtn(process);
     }
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
@@ -82,7 +82,7 @@ void *ps(void *args)
 }
 
 /*Assigns a process to a core*/
-void use_core_ps(Process *process, Core *core, unsigned int cores)
+void use_core_srtn(Process *process, Core *core, unsigned int cores)
 {
   unsigned int i = 0;
   while(i < cores) {
@@ -99,7 +99,7 @@ void use_core_ps(Process *process, Core *core, unsigned int cores)
 }
 
 /*System checks if a CPU that was previously in use is available*/
-unsigned int check_cores_available_ps(Core *core, unsigned int cores)
+unsigned int check_cores_available_srtn(Core *core, unsigned int cores)
 {
   unsigned int i, count = 0;
   for(i = 0; i < cores; i++) {
@@ -119,7 +119,7 @@ unsigned int check_cores_available_ps(Core *core, unsigned int cores)
 }
 
 /*Get the number of finished processes*/
-unsigned int finished_processes_ps(Process *process, unsigned int total)
+unsigned int finished_processes_srtn(Process *process, unsigned int total)
 {
   unsigned int i, count = 0;
   for(i = 0; i < total; i++) {
@@ -139,7 +139,7 @@ unsigned int finished_processes_ps(Process *process, unsigned int total)
 }
 
 /*Initialize cores*/
-void initialize_cores_ps(Core *core, unsigned int cores)
+void initialize_cores_srtn(Core *core, unsigned int cores)
 {
   unsigned int count;
   for(count = 0; count < cores; count++) {
@@ -148,12 +148,12 @@ void initialize_cores_ps(Core *core, unsigned int cores)
   }
 }
 
-/*Initiate threads to run ps scheduling*/
-void do_ps(pthread_t *threads, Process *process, unsigned int *total)
+/*Initiate threads to run srtn scheduling*/
+void do_srtn(pthread_t *threads, Process *process, unsigned int *total)
 {
   unsigned int i;
   for(i = 0; i <= *total; i++) {
-    if(pthread_create(&threads[i], NULL, ps, &process[i])) {
+    if(pthread_create(&threads[i], NULL, srtn, &process[i])) {
       printf("Error creating thread.\n");
       return;
     }
@@ -167,7 +167,7 @@ void do_ps(pthread_t *threads, Process *process, unsigned int *total)
 }
 
 /*Running process*/
-int do_task_ps(Process *process)
+int do_task_srtn(Process *process)
 {
   struct timespec duration, now;
   clock_gettime(CLOCK_REALTIME, &duration);
@@ -195,7 +195,7 @@ int do_task_ps(Process *process)
 }
 
 /*Look up for new processes*/
-void fetch_process_ps(Process *process, unsigned int total)
+void fetch_process_srtn(Process *process, unsigned int total)
 {
   float sec;
   unsigned int i;
@@ -217,8 +217,8 @@ void fetch_process_ps(Process *process, unsigned int total)
     }
 }
 
-/*Selects the highest priority process */
-Process *select_ps(Process *process, unsigned int total)
+/*Selects the shortest process */
+Process *select_srtn(Process *process, unsigned int total)
 {
   unsigned int i;
   Process *next = NULL;
@@ -226,26 +226,26 @@ Process *select_ps(Process *process, unsigned int total)
   for(i = 0; i < total; i++)
     if(process[i].arrived && !process[i].working && !process[i].done) {
       if(next == NULL) next = &process[i];
-      else if(process[i].priority > next->priority) next = &process[i];
+      else if(process[i].remaining < next->remaining) next = &process[i];
     }
   return next;
 }
 
-unsigned int release_core_ps(Process *next, Core *core, unsigned int cores)
+unsigned int release_core_srtn(Process *next, Core *core, unsigned int cores)
 {
   unsigned int i, j = 0;
-  int lower = core[j].process->priority;
+  float higher = core[j].process->remaining;
 
-  for(i = 1; i < cores; i++) if(lower > core[i].process->priority) {
+  for(i = 1; i < cores; i++) if(higher < core[i].process->remaining) {
     j = i;
-    lower = core[j].process->priority;
+    higher = core[j].process->remaining;
   }
 
-  if(next->priority > lower) {
+  if(next->remaining < higher) {
     core[j].process->working = False;
     core[j].available = True;
     if(paramd)
-      fprintf(stderr, "Process '%s' (Priority: %d) has been removed from CPU %u\n", core[j].process->name, lower, j);
+      fprintf(stderr, "Process '%s' (remaining time: %f) has been removed from CPU %u\n", core[j].process->name, higher, j);
     context_changes++;
     core[j].process = NULL;
     return 1;

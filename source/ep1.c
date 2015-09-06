@@ -5,14 +5,14 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include "headers/ep1.h"
-#include "headers/core.h"
-#include "headers/fcfs.h"
-#include "headers/sjf.h"
-#include "headers/srtn.h"
-#include "headers/rr.h"
-#include "headers/ps.h"
-#include "headers/edf.h"
+#include "../headers/ep1.h"
+#include "../headers/core.h"
+#include "../headers/fcfs.h"
+#include "../headers/sjf.h"
+#include "../headers/srtn.h"
+#include "../headers/rr.h"
+#include "../headers/ps.h"
+#include "../headers/edf.h"
 
 int main(int argc, char **argv)
 {

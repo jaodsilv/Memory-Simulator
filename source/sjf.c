@@ -6,22 +6,22 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "headers/ep1.h"
-#include "headers/core.h"
-#include "headers/fcfs.h"
+#include "../headers/ep1.h"
+#include "../headers/core.h"
+#include "../headers/sjf.h"
 
-/*First Come First Served*/
-void *fcfs(void *args)
+/*Shortest Job First*/
+void *sjf(void *args)
 {
   Process *process = ((Process*) args);
 
-  /*Coordinator thread*/
+  /*Coordinator Thread*/
 	if(process->coordinator) {
     unsigned int available_cores, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
     Core *core;
 
     core = malloc(cores * sizeof(*core));
-    initialize_cores_fcfs(core, cores);
+    initialize_cores_sjf(core, cores);
 
     /*Initialize simulator globals*/
     context_changes = 0;
@@ -32,11 +32,11 @@ void *fcfs(void *args)
     while(count != process->total) {
       Process *next = NULL;
 
-      fetch_process_fcfs(process->process, process->total);
-      next = select_fcfs(process->process, process->total);
-      if(next != NULL && available_cores > 0) use_core_fcfs(next, core, cores);
-      count = finished_processes_fcfs(process->process, process->total);
-      available_cores = check_cores_available_fcfs(core, cores);
+      fetch_process_sjf(process->process, process->total);
+      next = select_sjf(process->process, process->total);
+      if(next != NULL && available_cores > 0) use_core_sjf(next, core, cores);
+      count = finished_processes_sjf(process->process, process->total);
+      available_cores = check_cores_available_sjf(core, cores);
     }
 
     /*Get simulation ending time*/
@@ -59,7 +59,7 @@ void *fcfs(void *args)
     /*Wait the system assigns a CPU to the process*/
     sem_wait(&(process->next_stage));
     /*Perform a task*/
-    do_task_fcfs(process);
+    do_task_sjf(process);
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->finish_cpu_time = (((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC);
@@ -78,7 +78,7 @@ void *fcfs(void *args)
 }
 
 /*Assigns a process to a core*/
-void use_core_fcfs(Process *process, Core *core, unsigned int cores)
+void use_core_sjf(Process *process, Core *core, unsigned int cores)
 {
   unsigned int i = 0;
   while(i < cores) {
@@ -95,7 +95,7 @@ void use_core_fcfs(Process *process, Core *core, unsigned int cores)
 }
 
 /*System checks if a CPU that was previously in use is available*/
-unsigned int check_cores_available_fcfs(Core *core, unsigned int cores)
+unsigned int check_cores_available_sjf(Core *core, unsigned int cores)
 {
   unsigned int i, count = 0;
   for(i = 0; i < cores; i++) {
@@ -115,7 +115,7 @@ unsigned int check_cores_available_fcfs(Core *core, unsigned int cores)
 }
 
 /*Get the number of finished processes*/
-unsigned int finished_processes_fcfs(Process *process, unsigned int total)
+unsigned int finished_processes_sjf(Process *process, unsigned int total)
 {
   unsigned int i, count = 0;
   for(i = 0; i < total; i++) {
@@ -126,7 +126,7 @@ unsigned int finished_processes_fcfs(Process *process, unsigned int total)
       if(process[i].working) {
         process[i].working = False;
         if(paramd) fprintf(stderr, "Process '%s' is done. Line '%s %f %f' will be written to the output file\n",
-          process[i].name, process[i].name, process[i].finish_elapsed_time, process[i].finish_elapsed_time - process[i].arrival);
+        process[i].name, process[i].name, process[i].finish_elapsed_time, process[i].finish_elapsed_time - process[i].arrival);
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -135,7 +135,7 @@ unsigned int finished_processes_fcfs(Process *process, unsigned int total)
 }
 
 /*Initialize cores*/
-void initialize_cores_fcfs(Core *core, unsigned int cores)
+void initialize_cores_sjf(Core *core, unsigned int cores)
 {
   unsigned int count;
   for(count = 0; count < cores; count++) {
@@ -144,12 +144,12 @@ void initialize_cores_fcfs(Core *core, unsigned int cores)
   }
 }
 
-/*Initiate threads to run FCFS scheduling*/
-void do_fcfs(pthread_t *threads, Process *process, unsigned int *total)
+/*Initiate threads to run SJF scheduling*/
+void do_sjf(pthread_t *threads, Process *process, unsigned int *total)
 {
   unsigned int i;
   for(i = 0; i <= *total; i++) {
-    if(pthread_create(&threads[i], NULL, fcfs, &process[i])) {
+    if(pthread_create(&threads[i], NULL, sjf, &process[i])) {
       printf("Error creating thread.\n");
       return;
     }
@@ -163,7 +163,7 @@ void do_fcfs(pthread_t *threads, Process *process, unsigned int *total)
 }
 
 /*Running process*/
-void do_task_fcfs(Process *process)
+void do_task_sjf(Process *process)
 {
   struct timespec duration, now;
   clock_gettime(CLOCK_REALTIME, &duration);
@@ -188,7 +188,7 @@ void do_task_fcfs(Process *process)
 }
 
 /*Look up for new processes*/
-void fetch_process_fcfs(Process *process, unsigned int total)
+void fetch_process_sjf(Process *process, unsigned int total)
 {
   float sec;
   unsigned int i;
@@ -210,8 +210,8 @@ void fetch_process_fcfs(Process *process, unsigned int total)
     }
 }
 
-/*Selects the earlier process */
-Process *select_fcfs(Process *process, unsigned int total)
+/*Selects the shortest process */
+Process *select_sjf(Process *process, unsigned int total)
 {
   unsigned int i;
   Process *next = NULL;
@@ -219,7 +219,7 @@ Process *select_fcfs(Process *process, unsigned int total)
   for(i = 0; i < total; i++)
     if(process[i].arrived && !process[i].working && !process[i].done) {
       if(next == NULL) next = &process[i];
-      else if(process[i].arrival < next->arrival) next = &process[i];
+      else if(process[i].duration < next->duration) next = &process[i];
     }
   return next;
 }

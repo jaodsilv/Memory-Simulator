@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-#include "headers/ep1sh.h"
+#include "../headers/ep1sh.h"
 
 /*ep1sh main loop.*/
 int main(int argc, char **argv)

@@ -6,32 +6,22 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "headers/ep1.h"
-#include "headers/core.h"
-#include "headers/rr.h"
+#include "../headers/ep1.h"
+#include "../headers/core.h"
+#include "../headers/fcfs.h"
 
-/*Round Robin*/
-void *rr(void *args)
+/*First Come First Served*/
+void *fcfs(void *args)
 {
   Process *process = ((Process*) args);
 
   /*Coordinator thread*/
 	if(process->coordinator) {
-    unsigned int i, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
-    float quantum = 0;
-    Process *next = NULL;
-    Rotation *list, *r;
+    unsigned int available_cores, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
     Core *core;
 
     core = malloc(cores * sizeof(*core));
-    list = malloc(sizeof(*list));
-    list->process = NULL; list->next = list;
-    initialize_cores_rr(core, cores);
-
-    /*Calculates the quantum.*/
-    for(i = 0; i < process->total; i++) quantum += process->process[i].duration;
-    if(quantum < 1) quantum = 2.0;
-    else quantum = sqrt(quantum);
+    initialize_cores_fcfs(core, cores);
 
     /*Initialize simulator globals*/
     context_changes = 0;
@@ -40,22 +30,13 @@ void *rr(void *args)
     start_cpu_time = clock();
     /*Start simulation*/
     while(count != process->total) {
-      if(process->total - count > cores)
-        release_cores_rr(process->process, process->total, core, cores, quantum);
-      fetch_process_rr(process->process, process->total, list);
-      next = select_rr(next, list);
+      Process *next = NULL;
 
-      if(next != NULL) use_core_rr(next, core, cores);
-      count = finished_processes_rr(process->process, process->total);
-      check_cores_available_rr(core, cores);
-    }
-
-    /*Free RR circular list*/
-    while(count > 0) {
-      r = list->next;
-      free(list); list = NULL;
-      list = r;
-      count--;
+      fetch_process_fcfs(process->process, process->total);
+      next = select_fcfs(process->process, process->total);
+      if(next != NULL && available_cores > 0) use_core_fcfs(next, core, cores);
+      count = finished_processes_fcfs(process->process, process->total);
+      available_cores = check_cores_available_fcfs(core, cores);
     }
 
     /*Get simulation ending time*/
@@ -72,16 +53,13 @@ void *rr(void *args)
   }
   /*Other threads*/
 	else {
-    int completed = 0;
     struct timespec time;
     /*Wait the system know the process has arrived*/
     sem_wait(&(process->next_stage));
     /*Wait the system assigns a CPU to the process*/
-    while(!completed) {
-      sem_wait(&(process->next_stage));
-      /*Perform a taks*/
-      completed = do_task_rr(process);
-    }
+    sem_wait(&(process->next_stage));
+    /*Perform a task*/
+    do_task_fcfs(process);
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->finish_cpu_time = (((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC);
@@ -100,17 +78,16 @@ void *rr(void *args)
 }
 
 /*Assigns a process to a core*/
-void use_core_rr(Process *process, Core *core, unsigned int cores)
+void use_core_fcfs(Process *process, Core *core, unsigned int cores)
 {
   unsigned int i = 0;
   while(i < cores) {
-    if(core[i].available && !process->working && !process->done) {
+    if(core[i].available) {
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
       if(paramd) fprintf(stderr, "Process '%s' assigned to CPU %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
-      clock_gettime(CLOCK_REALTIME, &core[i].timer);
       break;
     }
     else i++;
@@ -118,7 +95,7 @@ void use_core_rr(Process *process, Core *core, unsigned int cores)
 }
 
 /*System checks if a CPU that was previously in use is available*/
-unsigned int check_cores_available_rr(Core *core, unsigned int cores)
+unsigned int check_cores_available_fcfs(Core *core, unsigned int cores)
 {
   unsigned int i, count = 0;
   for(i = 0; i < cores; i++) {
@@ -138,7 +115,7 @@ unsigned int check_cores_available_rr(Core *core, unsigned int cores)
 }
 
 /*Get the number of finished processes*/
-unsigned int finished_processes_rr(Process *process, unsigned int total)
+unsigned int finished_processes_fcfs(Process *process, unsigned int total)
 {
   unsigned int i, count = 0;
   for(i = 0; i < total; i++) {
@@ -149,7 +126,7 @@ unsigned int finished_processes_rr(Process *process, unsigned int total)
       if(process[i].working) {
         process[i].working = False;
         if(paramd) fprintf(stderr, "Process '%s' is done. Line '%s %f %f' will be written to the output file\n",
-        process[i].name, process[i].name, process[i].finish_elapsed_time, process[i].finish_elapsed_time - process[i].arrival);
+          process[i].name, process[i].name, process[i].finish_elapsed_time, process[i].finish_elapsed_time - process[i].arrival);
       }
     }
     pthread_mutex_unlock(&(process[i].mutex));
@@ -158,7 +135,7 @@ unsigned int finished_processes_rr(Process *process, unsigned int total)
 }
 
 /*Initialize cores*/
-void initialize_cores_rr(Core *core, unsigned int cores)
+void initialize_cores_fcfs(Core *core, unsigned int cores)
 {
   unsigned int count;
   for(count = 0; count < cores; count++) {
@@ -167,12 +144,12 @@ void initialize_cores_rr(Core *core, unsigned int cores)
   }
 }
 
-/*Initiate threads to run rr scheduling*/
-void do_rr(pthread_t *threads, Process *process, unsigned int *total)
+/*Initiate threads to run FCFS scheduling*/
+void do_fcfs(pthread_t *threads, Process *process, unsigned int *total)
 {
   unsigned int i;
   for(i = 0; i <= *total; i++) {
-    if(pthread_create(&threads[i], NULL, rr, &process[i])) {
+    if(pthread_create(&threads[i], NULL, fcfs, &process[i])) {
       printf("Error creating thread.\n");
       return;
     }
@@ -186,7 +163,7 @@ void do_rr(pthread_t *threads, Process *process, unsigned int *total)
 }
 
 /*Running process*/
-int do_task_rr(Process *process)
+void do_task_fcfs(Process *process)
 {
   struct timespec duration, now;
   clock_gettime(CLOCK_REALTIME, &duration);
@@ -197,7 +174,6 @@ int do_task_rr(Process *process)
       process->remaining -= 0.025;
       clock_gettime(CLOCK_REALTIME, &duration);
     }
-    if(!process->working) return 0;
   }
 
   clock_gettime(CLOCK_REALTIME, &duration);
@@ -209,14 +185,11 @@ int do_task_rr(Process *process)
 
   if((float)duration.tv_sec + ((float)duration.tv_nsec / 1000000000 ) > process->deadline)
     process->failed = True;
-
-  return 1;
 }
 
 /*Look up for new processes*/
-void fetch_process_rr(Process *process, unsigned int total, Rotation *list)
+void fetch_process_fcfs(Process *process, unsigned int total)
 {
-  Rotation *next;
   float sec;
   unsigned int i;
   struct timespec time;
@@ -229,67 +202,24 @@ void fetch_process_rr(Process *process, unsigned int total, Rotation *list)
     time.tv_nsec = start_elapsed_time.tv_nsec - time.tv_nsec;
 
   sec = (float)time.tv_sec + ((float)time.tv_nsec / 1000000000 );
-  next = list;
-  while(next->next != list) next = next->next;
   for(i = 0; i < total; i++)
     if(sec >= process[i].arrival && !process[i].arrived) {
-      if(list->process == NULL) {
-        list->process = &process[i];
-        list->next = list;
-      }
-      else {
-        Rotation *new;
-        new = malloc(sizeof(*new));
-        next->next = new;
-        new->process = &process[i];
-        new->next = list;
-        next = next->next;
-      }
-
       process[i].arrived = True;
       sem_post(&(process[i].next_stage));
       if(paramd) fprintf(stderr, "Process '%s' has arrived (trace file line %u)\n", process[i].name, i + 1);
     }
 }
 
-/*Selects next process to get a CPU*/
-Process *select_rr(Process *next, Rotation *list)
+/*Selects the earlier process */
+Process *select_fcfs(Process *process, unsigned int total)
 {
-  if(next == NULL && list->process != NULL) return list->process;
-  else if(next != NULL) {
-    Rotation *r;
-    for(r = list; r->process != next; r = r->next) continue;
-    return r->next->process;
-  }
-  return NULL;
-}
-
-/*Release cores from process that are exceeding the quantum*/
-void release_cores_rr(Process *process, unsigned int total, Core *core, unsigned int cores, float quantum)
-{
-  float sec;
   unsigned int i;
-  struct timespec time;
+  Process *next = NULL;
 
-  for(i = 0; i < cores; i++) {
-    clock_gettime(CLOCK_REALTIME, &time);
-    time.tv_sec = time.tv_sec - core[i].timer.tv_sec;
-    if(time.tv_nsec > core[i].timer.tv_nsec)
-      time.tv_nsec = time.tv_nsec - core[i].timer.tv_nsec;
-    else
-      time.tv_nsec = core[i].timer.tv_nsec - time.tv_nsec;
-
-    if(core[i].process != NULL && (sec = (float)time.tv_sec + ((float)time.tv_nsec / 1000000000 )) > quantum) {
-      int j;
-      for(j = 0; j < total; j++) if(core[i].process == &process[j]) {
-        process[j].working = False;
-        if(paramd)
-          fprintf(stderr, "Process '%s' has been removed from CPU %u. Quantum time expired (%fs > %fs)\n", core[i].process->name, i, sec, quantum);
-        context_changes++;
-        break;
-      }
-      core[i].available = True;
-      core[i].process = NULL;
+  for(i = 0; i < total; i++)
+    if(process[i].arrived && !process[i].working && !process[i].done) {
+      if(next == NULL) next = &process[i];
+      else if(process[i].arrival < next->arrival) next = &process[i];
     }
-  }
+  return next;
 }
