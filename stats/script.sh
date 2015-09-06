@@ -1,6 +1,8 @@
 #!/bin/bash
 
 #Use: chmod 755 ./script.sh. Parameters: First 3 are the ep1 parameters, last one is the total number of times the program will be executed.
+# This script generate statistics based on a chosen number of executions, considering each execution output results,
+# Do NOT use the optional parameter 'd' while running this script.
 
 declare -A process_finished
 declare -A process_duration
@@ -15,6 +17,9 @@ count=1
 while [ $count -le $runs ]; do
   run=$(($count - 1))
   echo Bash Script Run $'#'$count:
+  if [ $count -eq 1 ]; then
+    cd ..
+  fi
   ./ep1 $number $input_name $output_name
   total_process=$(wc -l < outputs/$output_name)
   total_process=$(($total_process - 1))
@@ -36,6 +41,8 @@ while [ $count -le $runs ]; do
   done < outputs/$output_name
   let count=count+1
 done
+
+cd stats/
 
 #get the mean of both output time values (ending time and duration)
 i=0
@@ -91,9 +98,11 @@ done
 
 # prints mean | SD | CI of each process i
 i=0
-echo $'\n'process i MEAN '/' SD '/' CI. "(F) stands for finished and (D) for duration":
+echo "process i MEAN / SD / CI. (F) stands for finished and (D) for duration:" 1>statistics.txt
 while [ $i -lt $total_process ]; do
-  echo "(F) process"$(($i + 1)) ${process_finished_mean[$i]} '/' ${process_finished_sd[$i]} '/' '['${process_finished_lower_endpoint[$i]}, ${process_finished_upper_endpoint[$i]}']'
-  echo "(D) process"$(($i + 1)) ${process_duration_mean[$i]} '/' ${process_duration_sd[$i]} '/' '['${process_duration_lower_endpoint[$i]}, ${process_duration_upper_endpoint[$i]}']'
+  echo "(F) process"$(($i + 1)) ${process_finished_mean[$i]} '/' ${process_finished_sd[$i]} '/' '['${process_finished_lower_endpoint[$i]}, ${process_finished_upper_endpoint[$i]}']' 1>> statistics.txt
+  echo "(D) process"$(($i + 1)) ${process_duration_mean[$i]} '/' ${process_duration_sd[$i]} '/' '['${process_duration_lower_endpoint[$i]}, ${process_duration_upper_endpoint[$i]}']' 1>> statistics.txt
   let i=i+1
 done
+
+echo "Script output was written to 'statistics.txt'"
