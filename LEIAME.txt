@@ -48,7 +48,17 @@ d - Conforme a simulação acontece, se o argumento 'd' foi passado, o simulador
 irá imprimir algumas informações em tempo de execução. Tais informações são as
 especificadas no enunciado. Este argumento é OPCIONAL.
 
-OBS: A ORDEM DOS ARGUMENTOS DEVE SER RESPEITADA.
+Exemplo de chamada:
+
+§ ./ep1 6 minha_entrada.txt minha_saida.txt d
+
+OBS1: Atente ao fato de que o programa não está esperando o nome dos arquivos
+de entrada e saída com os diretórios inputs/ e outputs/, respectivamente. O
+próprio simulador está programado para procurar as entradas em inputs/ e escrever
+em outputs/. O usuário só deve passar os nomes dos arquivos e garantir que as
+entradas estão no diretório correto.
+OBS2: A ordem dos argumentos DEVE ser respeitada.
+
 
 3. Organização.
 
