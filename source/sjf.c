@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #define _POSIX_C_SOURCE 199309L  /*clock_gettime*/
 #include <math.h>                /*abs*/
 #include <time.h>
@@ -14,15 +15,27 @@
 void *sjf(void *args)
 {
   Process *process = ((Process*) args);
+  process->thread = pthread_self();
 
   /*Coordinator Thread*/
 	if(process->coordinator) {
     unsigned int available_cores, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
     Core *core;
 
+    CPU_ZERO(&cpu_set);
+    for(count = 0; count < cores; count++) CPU_SET(count, &cpu_set);
+    for(count = 0; count <= process->total; count++) {
+      int ret;
+      if((ret = pthread_setaffinity_np(process->process[count].thread, sizeof(cpu_set), &cpu_set)) != 0) {
+        fprintf(stderr, "error: pthread set affinity.\n"); exit(EXIT_FAILURE);
+      }
+      if((ret = pthread_getaffinity_np(process->process[count].thread, sizeof(cpu_set), &cpu_set)) != 0) {
+        fprintf(stderr, "error: pthread get affinity.\n"); exit(EXIT_FAILURE);
+      }
+    }
     core = malloc(cores * sizeof(*core));
     initialize_cores_sjf(core, cores);
-
+    count = 0;
     /*Initialize simulator globals*/
     context_changes = 0;
     process->context_changes = &context_changes;
@@ -86,7 +99,8 @@ void use_core_sjf(Process *process, Core *core, unsigned int cores)
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
-      if(paramd) fprintf(stderr, "Process '%s' assigned to CPU %d\n", core[i].process->name, i);
+      if(paramd && CPU_ISSET(i, &cpu_set))
+        fprintf(stderr, "Process '%s' assigned to CPU %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
       break;
     }
@@ -103,7 +117,8 @@ unsigned int check_cores_available_sjf(Core *core, unsigned int cores)
       /*Mutex to read 'done' safely*/
       pthread_mutex_lock(&(core[i].process->mutex));
       if(core[i].process->done) {
-        if(paramd) fprintf(stderr, "Process '%s' has released CPU %u\n", core[i].process->name, i);
+        if(paramd && CPU_ISSET(i, &cpu_set))
+          fprintf(stderr, "Process '%s' has released CPU %u\n", core[i].process->name, i);
         core[i].available = True;
       }
       pthread_mutex_unlock(&(core[i].process->mutex));

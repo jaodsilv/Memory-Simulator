@@ -1,3 +1,5 @@
+cpu_set_t cpu_set;
+
 typedef struct core {
   boolean available;       /*Is this core available?*/
   Process *process;        /*If the core is busy, register the process using this core*/

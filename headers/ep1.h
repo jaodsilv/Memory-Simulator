@@ -10,6 +10,7 @@ typedef int boolean;
 #define True 1
 
 typedef struct process {
+  pthread_t thread;            /*The thread this process is*/
   boolean coordinator;         /*Is this a coordinator thread?*/
   float   arrival;             /*The time the process takes to reach the system*/
   boolean arrived;             /*Have the process arrived?*/

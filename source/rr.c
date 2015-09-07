@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #define _POSIX_C_SOURCE 199309L  /*clock_gettime*/
 #include <math.h>                /*abs*/
 #include <time.h>
@@ -14,6 +15,7 @@
 void *rr(void *args)
 {
   Process *process = ((Process*) args);
+  process->thread = pthread_self();
 
   /*Coordinator thread*/
 	if(process->coordinator) {
@@ -23,6 +25,17 @@ void *rr(void *args)
     Rotation *list, *r;
     Core *core;
 
+    CPU_ZERO(&cpu_set);
+    for(count = 0; count < cores; count++) CPU_SET(count, &cpu_set);
+    for(count = 0; count <= process->total; count++) {
+      int ret;
+      if((ret = pthread_setaffinity_np(process->process[count].thread, sizeof(cpu_set), &cpu_set)) != 0) {
+        fprintf(stderr, "error: pthread set affinity.\n"); exit(EXIT_FAILURE);
+      }
+      if((ret = pthread_getaffinity_np(process->process[count].thread, sizeof(cpu_set), &cpu_set)) != 0) {
+        fprintf(stderr, "error: pthread get affinity.\n"); exit(EXIT_FAILURE);
+      }
+    }
     core = malloc(cores * sizeof(*core));
     list = malloc(sizeof(*list));
     list->process = NULL; list->next = list;
@@ -33,6 +46,7 @@ void *rr(void *args)
     if(quantum < 1) quantum = 2.0;
     else quantum = sqrt(quantum);
 
+    count = 0;
     /*Initialize simulator globals*/
     context_changes = 0;
     process->context_changes = &context_changes;
@@ -108,7 +122,8 @@ void use_core_rr(Process *process, Core *core, unsigned int cores)
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
-      if(paramd) fprintf(stderr, "Process '%s' assigned to CPU %d\n", core[i].process->name, i);
+      if(paramd && CPU_ISSET(i, &cpu_set))
+        fprintf(stderr, "Process '%s' assigned to CPU %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
       clock_gettime(CLOCK_MONOTONIC, &core[i].timer);
       break;
@@ -126,7 +141,8 @@ unsigned int check_cores_available_rr(Core *core, unsigned int cores)
       /*Mutex to read 'done' safely*/
       pthread_mutex_lock(&(core[i].process->mutex));
       if(core[i].process->done) {
-        if(paramd) fprintf(stderr, "Process '%s' has released CPU %u\n", core[i].process->name, i);
+        if(paramd && CPU_ISSET(i, &cpu_set))
+          fprintf(stderr, "Process '%s' has released CPU %u\n", core[i].process->name, i);
         core[i].available = True;
       }
       pthread_mutex_unlock(&(core[i].process->mutex));
@@ -283,7 +299,7 @@ void release_cores_rr(Process *process, unsigned int total, Core *core, unsigned
       int j;
       for(j = 0; j < total; j++) if(core[i].process == &process[j]) {
         process[j].working = False;
-        if(paramd)
+        if(paramd && CPU_ISSET(i, &cpu_set))
           fprintf(stderr, "Process '%s' has been removed from CPU %u. Quantum time expired (%fs > %fs)\n", core[i].process->name, i, sec, quantum);
         context_changes++;
         break;
