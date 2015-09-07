@@ -135,7 +135,7 @@ int cmd_cd(char *cmd, char *wd)
     char *cdarg, *path;
 
     cdarg = malloc((strlen(cmd) - 2) * sizeof(*cdarg));
-    filter(cmd, 3, cdarg);
+    filter(cmd, cdarg);
 
     if(cdarg[0] != '/') {
       path = malloc((strlen(wd) + strlen(cdarg) + 2) * sizeof(*path));
@@ -145,7 +145,7 @@ int cmd_cd(char *cmd, char *wd)
     }
     else {
       path = malloc((strlen(cmd) - 2) * sizeof(*path));
-      filter(cmd, 3, path);
+      filter(cmd, path);
       if(path[0] == '\0' || chdir(path) != 0)
         printf("Bad argument for 'cd'.\n");
     }
@@ -214,28 +214,35 @@ int expand(char *cmd)
 }
 
 /*Filter command 'cmd' arguments 'arg',
-  starting from index 'begin', eliminating unnecessary spaces*/
-void filter(char *cmd, int begin, char *arg)
+  starting from index '3', eliminating unnecessary spaces*/
+void filter(char *cmd, char *arg)
 {
   int i, spaces = 0;
-  for(i = begin; i < strlen(cmd); i++) {
-    if(i == begin) while(isspace(cmd[i])) { i++; spaces++;}
+  i = 3;
+  while(isspace(cmd[i])) { i++; spaces++;}
+  for(; i < strlen(cmd); i++) {
     if(!isalnum(cmd[i])) {
-      if(begin == 3 && cmd[i] == '.' && cmd[i + 1] == '.' &&
+      if(cmd[i] == '.' && cmd[i + 1] == '.' &&
         (cmd[i + 2] == '\0' || cmd[i + 2] == ' ')) {
-          arg[i - begin - spaces] = cmd[i]; i++;
-          arg[i - begin - spaces] = cmd[i];
+          arg[i - 3 - spaces] = cmd[i]; i++;
+          arg[i - 3 - spaces] = cmd[i];
           continue;
         }
-      else if(begin == 3 && cmd[i] == '/') {
-        arg[i - begin - spaces] = cmd[i];
+      else if(cmd[i] == '\\' && cmd[i+1] == ' ') {
+        arg[i - 3 - spaces] = ' ';
+        i++; spaces++;
         continue;
       }
-      break;
+      else if(cmd[i] == '\\' || cmd[i] == '\0') {
+        break;
+      } else if(cmd[i] == ' ') {
+        arg[i - 3 - spaces] = '\0';
+        return;
+      }
     }
-    arg[i - begin - spaces] = cmd[i];
+    arg[i - 3 - spaces] = cmd[i];
   }
-  arg[i - begin - spaces] = '\0';
+  arg[i - 3 - spaces] = '\0';
 }
 
 /*
@@ -251,8 +258,9 @@ com cada comando usando chdir() e getcwd(), respectivamente.
 3) função expand foi baseada no código da página da biblioteca GNU History
 e adaptada para o nosso uso.
 
-4) Não está sendo considerado que haverão diretórios e arquivos com espaços no
-nome. Os nomes também devem ser inteiramente alfanuméricos.
+4) Os únicos caracteres proibidos para nomes de diretórios na maioria dos
+sistemas UNIX são '\' e '\0'. Para espaços o comportamento é o mesmo do 'cd'
+do linux, usa-se '\ '.
 
 5) A função "readline" está causando vazamento de memória. Não foi encontrado
 nem na documentação e nem no google uma solução. Os ponteiros para a memória

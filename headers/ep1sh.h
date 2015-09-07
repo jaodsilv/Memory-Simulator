@@ -7,4 +7,4 @@ int cmd_ep(char *);
 int cmd_show(char *);
 int cmd_pwd(char *, char *);
 void unrecognized(char *);
-void filter(char *, int, char *);
+void filter(char *, char *);
