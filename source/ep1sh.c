@@ -157,13 +157,13 @@ int cmd_cd(char *cmd, char *wd)
   return 0;
 }
 
-/*Check if user invoked '/bin/ls -l' binary to ep1sh*/
+/*Check if user invoked '/bin/ls -1' binary to ep1sh*/
 int cmd_ls(char *cmd)
 {
   if(strncmp(cmd, "/bin/ls ", 8) == 0) {
     int i;
     for(i = 8; i < strlen(cmd); i++) {
-      if(cmd[i] == '-' && cmd[i + 1] == 'l') break;
+      if(cmd[i] == '-' && cmd[i + 1] == '1') break;
       else if(cmd[i] == ' ') continue;
       else return 0;
     }
@@ -173,7 +173,7 @@ int cmd_ls(char *cmd)
       return 1;
     }
     else {
-      char *arguments[] = {"/bin/ls", "-l", NULL};
+      char *arguments[] = {"/bin/ls", "-1", NULL};
       execve("/bin/ls", arguments, NULL);
     }
   }
