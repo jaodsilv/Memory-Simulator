@@ -12,7 +12,7 @@ output_name=$3
 runs=$4
 
 # execute the ep1 'runs' times
-
+cc=0
 count=1
 while [ $count -le $runs ]; do
   run=$(($count - 1))
@@ -36,11 +36,14 @@ while [ $count -le $runs ]; do
     fi
     i=$(($i + 1))
     if [ $i -ge $total_process ]; then
+      read p
+      cc=$(($cc + ${p}))
       break
     fi
   done < outputs/$output_name
   let count=count+1
 done
+cc=$(echo "$cc/$runs" | bc -l )
 
 cd stats/
 
@@ -106,5 +109,5 @@ while [ $i -lt $total_process ]; do
   echo D,process$(($i + 1)),${process_duration_mean[$i]},${process_duration_sd[$i]},${process_duration_lower_endpoint[$i]},${process_duration_upper_endpoint[$i]} 1>> $filename
   let i=i+1
 done
-
+echo $cc 1>> $filename
 echo "Script output was written to '$filename'"
