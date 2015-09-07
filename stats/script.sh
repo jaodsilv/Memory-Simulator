@@ -98,11 +98,13 @@ done
 
 # prints mean | SD | CI of each process i
 i=0
-echo "process i MEAN / SD / CI. (F) stands for finished and (D) for duration:" 1>statistics.txt
+filename="statistics.csv"
+echo "# (F) stands for finished and (D) for duration:" 1>$filename
+echo "process, i, MEAN, SD, CI lower limit, CI upper limit" 1>>$filename
 while [ $i -lt $total_process ]; do
-  echo "(F) process"$(($i + 1)) ${process_finished_mean[$i]} '/' ${process_finished_sd[$i]} '/' '['${process_finished_lower_endpoint[$i]}, ${process_finished_upper_endpoint[$i]}']' 1>> statistics.txt
-  echo "(D) process"$(($i + 1)) ${process_duration_mean[$i]} '/' ${process_duration_sd[$i]} '/' '['${process_duration_lower_endpoint[$i]}, ${process_duration_upper_endpoint[$i]}']' 1>> statistics.txt
+  echo F,process$(($i + 1)),${process_finished_mean[$i]},${process_finished_sd[$i]},${process_finished_lower_endpoint[$i]},${process_finished_upper_endpoint[$i]} 1>> $filename
+  echo D,process$(($i + 1)),${process_duration_mean[$i]},${process_duration_sd[$i]},${process_duration_lower_endpoint[$i]},${process_duration_upper_endpoint[$i]} 1>> $filename
   let i=i+1
 done
 
-echo "Script output was written to 'statistics.txt'"
+echo "Script output was written to '$filename'"
