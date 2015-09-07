@@ -1,7 +1,7 @@
 EP1 de MAC0422 - Sistemas Operacionais - Simulador de Processos + Minishell
 
 Integrantes: Renan Fichberg      7991131
-             João M. M. da Silva <Inserir NUSP>
+             João M. M. da Silva 7577598
 
 1. Compilação
 
@@ -137,8 +137,6 @@ usuário não tentará quebrar o programa.
 - O programa tem um vazamento de memório por culpa da função readline. A biblioteca
 não provê uma função para desalocar o prompt.
 - A versão usada da readline é a do pacote libreadline-dev
-- Não está sendo considerado que haverão diretórios e arquivos com espaços no
-nome. Os nomes também devem ser inteiramente alfanuméricos.
 - Para maior segurança, certifique-se de que as entradas tem apenas um espaço
 separando cada informação, conforme mostrado no exemplo do item 6. .
 - uma chamada 'make clean' irá limpar todos os diretórios, menos o de 'inputs/'.
