@@ -36,7 +36,7 @@ void *rr(void *args)
     /*Initialize simulator globals*/
     context_changes = 0;
     process->context_changes = &context_changes;
-    clock_gettime(CLOCK_REALTIME, &start_elapsed_time);
+    clock_gettime(CLOCK_MONOTONIC, &start_elapsed_time);
     start_cpu_time = clock();
     /*Start simulation*/
     while(count != process->total) {
@@ -60,7 +60,7 @@ void *rr(void *args)
 
     /*Get simulation ending time*/
     finish_cpu_time = ((clock() - start_cpu_time));
-    clock_gettime(CLOCK_REALTIME, &finish_elapsed_time);
+    clock_gettime(CLOCK_MONOTONIC, &finish_elapsed_time);
     finish_elapsed_time.tv_sec = finish_elapsed_time.tv_sec - start_elapsed_time.tv_sec;
     if(finish_elapsed_time.tv_nsec > start_elapsed_time.tv_nsec)
       finish_elapsed_time.tv_nsec = finish_elapsed_time.tv_nsec - start_elapsed_time.tv_nsec;
@@ -85,7 +85,7 @@ void *rr(void *args)
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->finish_cpu_time = (((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC);
-    clock_gettime(CLOCK_REALTIME, &time);
+    clock_gettime(CLOCK_MONOTONIC, &time);
     time.tv_sec = time.tv_sec - start_elapsed_time.tv_sec;
     if(time.tv_nsec > start_elapsed_time.tv_nsec)
       time.tv_nsec = time.tv_nsec - start_elapsed_time.tv_nsec;
@@ -110,7 +110,7 @@ void use_core_rr(Process *process, Core *core, unsigned int cores)
       core[i].process->working = True;
       if(paramd) fprintf(stderr, "Process '%s' assigned to CPU %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
-      clock_gettime(CLOCK_REALTIME, &core[i].timer);
+      clock_gettime(CLOCK_MONOTONIC, &core[i].timer);
       break;
     }
     else i++;
@@ -189,18 +189,18 @@ void do_rr(pthread_t *threads, Process *process, unsigned int *total)
 int do_task_rr(Process *process)
 {
   struct timespec duration, now;
-  clock_gettime(CLOCK_REALTIME, &duration);
+  clock_gettime(CLOCK_MONOTONIC, &duration);
 
   while(process->remaining > 0) {
-    clock_gettime(CLOCK_REALTIME, &now);
+    clock_gettime(CLOCK_MONOTONIC, &now);
     if(abs(now.tv_nsec - duration.tv_nsec) > 25000000) {
       process->remaining -= 0.025;
-      clock_gettime(CLOCK_REALTIME, &duration);
+      clock_gettime(CLOCK_MONOTONIC, &duration);
     }
     if(!process->working) return 0;
   }
 
-  clock_gettime(CLOCK_REALTIME, &duration);
+  clock_gettime(CLOCK_MONOTONIC, &duration);
   duration.tv_sec = duration.tv_sec - start_elapsed_time.tv_sec;
   if(duration.tv_nsec > start_elapsed_time.tv_nsec)
     duration.tv_nsec = duration.tv_nsec - start_elapsed_time.tv_nsec;
@@ -221,7 +221,7 @@ void fetch_process_rr(Process *process, unsigned int total, Rotation *list)
   unsigned int i;
   struct timespec time;
 
-  clock_gettime(CLOCK_REALTIME, &time);
+  clock_gettime(CLOCK_MONOTONIC, &time);
   time.tv_sec = time.tv_sec - start_elapsed_time.tv_sec;
   if(time.tv_nsec > start_elapsed_time.tv_nsec)
     time.tv_nsec = time.tv_nsec - start_elapsed_time.tv_nsec;
@@ -272,7 +272,7 @@ void release_cores_rr(Process *process, unsigned int total, Core *core, unsigned
   struct timespec time;
 
   for(i = 0; i < cores; i++) {
-    clock_gettime(CLOCK_REALTIME, &time);
+    clock_gettime(CLOCK_MONOTONIC, &time);
     time.tv_sec = time.tv_sec - core[i].timer.tv_sec;
     if(time.tv_nsec > core[i].timer.tv_nsec)
       time.tv_nsec = time.tv_nsec - core[i].timer.tv_nsec;

@@ -26,7 +26,7 @@ void *edf(void *args)
     /*Initialize simulator globals*/
     context_changes = 0;
     process->context_changes = &context_changes;
-    clock_gettime(CLOCK_REALTIME, &start_elapsed_time);
+    clock_gettime(CLOCK_MONOTONIC, &start_elapsed_time);
     start_cpu_time = clock();
     /*Start simulation*/
     while(count != process->total) {
@@ -42,7 +42,7 @@ void *edf(void *args)
 
     /*Get simulation ending time*/
     finish_cpu_time = ((clock() - start_cpu_time));
-    clock_gettime(CLOCK_REALTIME, &finish_elapsed_time);
+    clock_gettime(CLOCK_MONOTONIC, &finish_elapsed_time);
     finish_elapsed_time.tv_sec = finish_elapsed_time.tv_sec - start_elapsed_time.tv_sec;
     if(finish_elapsed_time.tv_nsec > start_elapsed_time.tv_nsec)
       finish_elapsed_time.tv_nsec = finish_elapsed_time.tv_nsec - start_elapsed_time.tv_nsec;
@@ -67,7 +67,7 @@ void *edf(void *args)
     /*This thread is done. Mutex to write 'done' safely*/
     pthread_mutex_lock(&(process->mutex));
     process->finish_cpu_time = (((float)(clock() - start_cpu_time)) / CLOCKS_PER_SEC);
-    clock_gettime(CLOCK_REALTIME, &time);
+    clock_gettime(CLOCK_MONOTONIC, &time);
     time.tv_sec = time.tv_sec - start_elapsed_time.tv_sec;
     if(time.tv_nsec > start_elapsed_time.tv_nsec)
       time.tv_nsec = time.tv_nsec - start_elapsed_time.tv_nsec;
@@ -170,18 +170,18 @@ void do_edf(pthread_t *threads, Process *process, unsigned int *total)
 int do_task_edf(Process *process)
 {
   struct timespec duration, now;
-  clock_gettime(CLOCK_REALTIME, &duration);
+  clock_gettime(CLOCK_MONOTONIC, &duration);
 
   while(process->remaining > 0) {
-    clock_gettime(CLOCK_REALTIME, &now);
+    clock_gettime(CLOCK_MONOTONIC, &now);
     if(abs(now.tv_nsec - duration.tv_nsec) > 25000000) {
       process->remaining -= 0.025;
-      clock_gettime(CLOCK_REALTIME, &duration);
+      clock_gettime(CLOCK_MONOTONIC, &duration);
     }
     if(!process->working) return 0;
   }
 
-  clock_gettime(CLOCK_REALTIME, &duration);
+  clock_gettime(CLOCK_MONOTONIC, &duration);
   duration.tv_sec = duration.tv_sec - start_elapsed_time.tv_sec;
   if(duration.tv_nsec > start_elapsed_time.tv_nsec)
     duration.tv_nsec = duration.tv_nsec - start_elapsed_time.tv_nsec;
@@ -201,7 +201,7 @@ void fetch_process_edf(Process *process, unsigned int total)
   unsigned int i;
   struct timespec time;
 
-  clock_gettime(CLOCK_REALTIME, &time);
+  clock_gettime(CLOCK_MONOTONIC, &time);
   time.tv_sec = time.tv_sec - start_elapsed_time.tv_sec;
   if(time.tv_nsec > start_elapsed_time.tv_nsec)
     time.tv_nsec = time.tv_nsec - start_elapsed_time.tv_nsec;

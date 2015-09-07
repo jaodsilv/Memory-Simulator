@@ -244,33 +244,3 @@ void filter(char *cmd, char *arg)
   }
   arg[i - 3 - spaces] = '\0';
 }
-
-/*
-Notes:
-
-1) Certifique-se de que o pacote libreadline-dev foi instlado. Isso pode ser
-feito, por exemplo, atraves do comando aptitude install libreadline-dev
-
-2) cd e pwd estão implementados de forma parecida com o seguinte link:
-https://cnswww.cns.cwru.edu/php/chet/readline/readline.html
-com cada comando usando chdir() e getcwd(), respectivamente.
-
-3) função expand foi baseada no código da página da biblioteca GNU History
-e adaptada para o nosso uso.
-
-4) Os únicos caracteres proibidos para nomes de diretórios na maioria dos
-sistemas UNIX são '\' e '\0'. Para espaços o comportamento é o mesmo do 'cd'
-do linux, usa-se '\ '.
-
-5) A função "readline" está causando vazamento de memória. Não foi encontrado
-nem na documentação e nem no google uma solução. Os ponteiros para a memória
-que deve ser desalocada, porém, são marcados como "ainda alcançáveis" no
-valgrind. Com uma query certa no google é fácil de encontrar outros usuários
-que tiveram este problema.
-
-6) Para usar o ep1, os arquivos de trace devem, obrigatoriamente, estarem no
-diretório inputs/
-
-7) Os arquivos de trace (input) precisam estar com cada item separado de apenas
-UM espaço (' ') e precisa ter uma linha extra vazia no final.
-*/
