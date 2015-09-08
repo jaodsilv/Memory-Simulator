@@ -18,8 +18,8 @@ while [ $input -le 3 ]; do
 
   i=0
   while read p; do
-    process_finished_expected[$i]=$(echo ${p} | cut -d ' ' -f 3)
-    process_duration_expected[$i]=$(echo ${p} | cut -d ' ' -f 4)
+    process_duration_expected[$i]=$(echo ${p} | cut -d ' ' -f 3)
+    process_finished_expected[$i]=$(echo ${p} | cut -d ' ' -f 4)
     let i=i+1
   done < inputs/$input_name
 
