@@ -26,6 +26,7 @@ void *fcfs(void *args)
     for(count = 0; count < cores; count++) CPU_SET(count, &cpu_set);
     for(count = 0; count <= process->total; count++) {
       int ret;
+      while(process->process[count].thread == 0) continue;
       if((ret = pthread_setaffinity_np(process->process[count].thread, sizeof(cpu_set), &cpu_set)) != 0) {
         fprintf(stderr, "error: pthread set affinity.\n"); exit(EXIT_FAILURE);
       }
