@@ -111,8 +111,9 @@ Deadline First)
 21) headers/rr.h - Cabeçalho de source/rr.c
 22) headers/ps.h - Cabeçalho de source/ps.c
 23) headers/edf.h - Cabeçalho de source/edf.c
-24) headers/core.h - Cabeçaho que contém um estrutura 'core', usado nos
+24) headers/core.h - Cabeçalho que contém um estrutura 'core', usado nos
 escalonamentos
+25) presentation/slides.pdf - Slides a serem usados na apresentação em sala.
 
 5. Sobre o código.
 
