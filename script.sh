@@ -15,6 +15,14 @@ input=1
 while [ $input -le 3 ]; do
   # execute the ep1 'runs' times
   sched=1
+
+  i=0
+  while read p; do
+    process_finished_expected[$i]=$(echo ${p} | cut -d ' ' -f 3)
+    process_duration_expected[$i]=$(echo ${p} | cut -d ' ' -f 4)
+    let i=i+1
+  done < inputs/$input_name
+
   while [ $sched -le 6 ]; do
     cc=0
     count=1
@@ -129,7 +137,8 @@ while [ $input -le 3 ]; do
     while [ $i -lt $total_process ]; do
       echo '('F')' process$(($i + 1)), ${process_finished_mean[$i]}, ${process_finished_sd[$i]}, '['${process_finished_lower_endpoint[$i]}, ${process_finished_upper_endpoint[$i]}']' 1>> $filename
       echo '('D')' process$(($i + 1)), ${process_duration_mean[$i]}, ${process_duration_sd[$i]}, '['${process_duration_lower_endpoint[$i]}, ${process_duration_upper_endpoint[$i]}']' 1>> $filename
-      if [ process_finished[$i,$run] -gt ${process_finished_upper_endpoint[$i]} ]; then
+      s=$(echo ${process_finished_expected[$i]} '<' ${process_finished_lower_endpoint[$i]} | bc -l)
+      if [ $s -eq 1 ]; then
         failed=$(($failed + 1))
       fi
       let i=i+1
