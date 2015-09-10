@@ -11,15 +11,18 @@
 #include "../headers/core.h"
 #include "../headers/ps.h"
 
-/*Priority Scheduling (Preemptive)*/
+/*Priority Sched*/
 void *ps(void *args)
 {
   Process *process = ((Process*) args);
   process->thread = pthread_self();
 
   /*Coordinator thread*/
-	if(process->coordinator) {
-    unsigned int available_cores, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
+  if(process->coordinator) {
+    unsigned int i, count = 0, cores = sysconf(_SC_NPROCESSORS_ONLN);
+    float quantum = 0;
+    Process *next = NULL;
+    Rotation *list, *r;
     Core *core;
 
     CPU_ZERO(&cpu_set);
@@ -28,14 +31,22 @@ void *ps(void *args)
       int ret;
       while(process->process[count].thread == 0) continue;
       if((ret = pthread_setaffinity_np(process->process[count].thread, sizeof(cpu_set), &cpu_set)) != 0) {
-        fprintf(stderr, "error: pthread set affinity.\n"); exit(EXIT_FAILURE);
+        fprintf(stderr, "epsor: pthread set affinity.\n"); exit(EXIT_FAILURE);
       }
       if((ret = pthread_getaffinity_np(process->process[count].thread, sizeof(cpu_set), &cpu_set)) != 0) {
-        fprintf(stderr, "error: pthread get affinity.\n"); exit(EXIT_FAILURE);
+        fprintf(stderr, "epsor: pthread get affinity.\n"); exit(EXIT_FAILURE);
       }
     }
     core = malloc(cores * sizeof(*core));
+    list = malloc(sizeof(*list));
+    list->process = NULL; list->next = list;
     initialize_cores_ps(core, cores);
+
+    /*Calculates the quantum.*/
+    for(i = 0; i < process->total; i++) quantum += process->process[i].duration;
+    if(quantum < 1) quantum = 2.0;
+    else quantum = sqrt(quantum)/10;
+
     count = 0;
     /*Initialize simulator globals*/
     context_changes = 0;
@@ -44,14 +55,22 @@ void *ps(void *args)
     start_cpu_time = clock();
     /*Start simulation*/
     while(count != process->total) {
-      Process *next = NULL;
+      if(process->total - count > cores)
+        release_cores_ps(process->process, process->total, core, cores, quantum);
+      fetch_process_ps(process->process, process->total, list);
+      next = select_ps(next, list);
 
-      fetch_process_ps(process->process, process->total);
-      next = select_ps(process->process, process->total);
-      if(next != NULL && available_cores == 0) available_cores = release_core_ps(next, core, cores);
-      if(next != NULL && available_cores > 0) use_core_ps(next, core, cores);
+      if(next != NULL) use_core_ps(next, core, cores);
       count = finished_processes_ps(process->process, process->total);
-      available_cores = check_cores_available_ps(core, cores);
+      check_cores_available_ps(core, cores);
+    }
+
+    /*Free RR circular list*/
+    while(count > 0) {
+      r = list->next;
+      free(list); list = NULL;
+      list = r;
+      count--;
     }
 
     /*Get simulation ending time*/
@@ -67,7 +86,7 @@ void *ps(void *args)
     free(core); core = NULL;
   }
   /*Other threads*/
-	else {
+  else {
     int completed = 0;
     struct timespec time;
     /*Wait the system know the process has arrived*/
@@ -75,7 +94,7 @@ void *ps(void *args)
     /*Wait the system assigns a CPU to the process*/
     while(!completed) {
       sem_wait(&(process->next_stage));
-      /*Perform a task*/
+      /*Perform a taks*/
       completed = do_task_ps(process);
     }
     /*This thread is done. Mutex to write 'done' safely*/
@@ -92,7 +111,7 @@ void *ps(void *args)
     process->done = True;
     pthread_mutex_unlock(&(process->mutex));
   }
-	return NULL;
+  return NULL;
 }
 
 /*Assigns a process to a core*/
@@ -100,13 +119,14 @@ void use_core_ps(Process *process, Core *core, unsigned int cores)
 {
   unsigned int i = 0;
   while(i < cores) {
-    if(core[i].available) {
+    if(core[i].available && !process->working && !process->done) {
       core[i].available = False;
       core[i].process = process;
       core[i].process->working = True;
       if(paramd && CPU_ISSET(i, &cpu_set))
         fprintf(stderr, "Process '%s' assigned to CPU %d\n", core[i].process->name, i);
       sem_post(&(core[i].process->next_stage));
+      clock_gettime(CLOCK_MONOTONIC, &core[i].timer);
       break;
     }
     else i++;
@@ -170,13 +190,13 @@ void do_ps(pthread_t *threads, Process *process, unsigned int *total)
   unsigned int i;
   for(i = 0; i <= *total; i++) {
     if(pthread_create(&threads[i], NULL, ps, &process[i])) {
-      printf("Error creating thread.\n");
+      printf("Epsor creating thread.\n");
       return;
     }
   }
   for(i = 0; i <= *total; i++) {
     if(pthread_join(threads[i], NULL)) {
-      printf("Error joining process thread.\n");
+      printf("Epsor joining process thread.\n");
       return;
     }
   }
@@ -211,8 +231,9 @@ int do_task_ps(Process *process)
 }
 
 /*Look up for new processes*/
-void fetch_process_ps(Process *process, unsigned int total)
+void fetch_process_ps(Process *process, unsigned int total, Rotation *list)
 {
+  Rotation *next;
   float sec;
   unsigned int i;
   struct timespec time;
@@ -225,46 +246,67 @@ void fetch_process_ps(Process *process, unsigned int total)
     time.tv_nsec = start_elapsed_time.tv_nsec - time.tv_nsec;
 
   sec = (float)time.tv_sec + ((float)time.tv_nsec / 1000000000 );
+  next = list;
+  while(next->next != list) next = next->next;
   for(i = 0; i < total; i++)
     if(sec >= process[i].arrival && !process[i].arrived) {
+      if(list->process == NULL) {
+        list->process = &process[i];
+        list->next = list;
+      }
+      else {
+        Rotation *new;
+        new = malloc(sizeof(*new));
+        next->next = new;
+        new->process = &process[i];
+        new->next = list;
+        next = next->next;
+      }
+
       process[i].arrived = True;
       sem_post(&(process[i].next_stage));
       if(paramd) fprintf(stderr, "Process '%s' has arrived (trace file line %u)\n", process[i].name, i + 1);
     }
 }
 
-/*Selects the highest priority process */
-Process *select_ps(Process *process, unsigned int total)
+/*Selects next process to get a CPU*/
+Process *select_ps(Process *next, Rotation *list)
 {
-  unsigned int i;
-  Process *next = NULL;
-
-  for(i = 0; i < total; i++)
-    if(process[i].arrived && !process[i].working && !process[i].done) {
-      if(next == NULL) next = &process[i];
-      else if(process[i].priority > next->priority) next = &process[i];
-    }
-  return next;
+  if(next == NULL && list->process != NULL) return list->process;
+  else if(next != NULL) {
+    Rotation *r;
+    for(r = list; r->process != next; r = r->next) continue;
+    return r->next->process;
+  }
+  return NULL;
 }
 
-unsigned int release_core_ps(Process *next, Core *core, unsigned int cores)
+/*Release cores from process that are exceeding the quantum*/
+void release_cores_ps(Process *process, unsigned int total, Core *core, unsigned int cores, float quantum)
 {
-  unsigned int i, j = 0;
-  int lower = core[j].process->priority;
+  float sec;
+  unsigned int i;
+  struct timespec time;
 
-  for(i = 1; i < cores; i++) if(lower > core[i].process->priority) {
-    j = i;
-    lower = core[j].process->priority;
-  }
+  for(i = 0; i < cores; i++) {
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    time.tv_sec = time.tv_sec - core[i].timer.tv_sec;
+    if(time.tv_nsec > core[i].timer.tv_nsec)
+      time.tv_nsec = time.tv_nsec - core[i].timer.tv_nsec;
+    else
+      time.tv_nsec = core[i].timer.tv_nsec - time.tv_nsec;
 
-  if(next->priority > lower) {
-    core[j].process->working = False;
-    core[j].available = True;
-    if(paramd && CPU_ISSET(j, &cpu_set))
-      fprintf(stderr, "Process '%s' (Priority: %d) has been removed from CPU %u\n", core[j].process->name, lower, j);
-    context_changes++;
-    core[j].process = NULL;
-    return 1;
+    if(core[i].process != NULL && (sec = (float)time.tv_sec + ((float)time.tv_nsec / 1000000000 )) > quantum*(core[i].process->priority + 21)) {
+      int j;
+      for(j = 0; j < total; j++) if(core[i].process == &process[j]) {
+        process[j].working = False;
+        if(paramd && CPU_ISSET(i, &cpu_set))
+          fprintf(stderr, "Process '%s' has been removed from CPU %u. Quantum time expired (%fs > %fs)\n", core[i].process->name, i, sec, quantum*(core[i].process->priority + 21));
+        context_changes++;
+        break;
+      }
+      core[i].available = True;
+      core[i].process = NULL;
+    }
   }
-  return 0;
 }
