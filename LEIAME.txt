@@ -142,6 +142,8 @@ respeitando os espaços). Ainda, apesar do simulador ser inteligente para alguma
 coisas e não deixá-las passar (caso tenha sido encontrado algum valor absurdo,
 como uma prioridade fora do intervalo), está sendo considerado que o nosso
 usuário não tentará quebrar o programa.
+OBS: Note que no exemplo acima, o deadline do processo 4 é impossível de ser cumprido.
+O simulador NÃO trabalha fazendo checagens deste tipo.
 
 7. Observações.
 
