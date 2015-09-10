@@ -147,8 +147,15 @@ usuário não tentará quebrar o programa.
 
 - O programa tem um vazamento de memório por culpa da função readline. A biblioteca
 não provê uma função para desalocar o prompt.
-- A versão usada da readline é a do pacote libreadline-dev
+- Nosso código do simulador cria as threads todas de uma vez antes do início da simulação,
+mas estas ficam presas num semáforo para que só comecem a executar no tempo t0 deles.
+Optamos por esta abordagem porque fez mais sentido para a nossa estrutura e porque fazer
+de outro jeito, para a nosso estrutura, envolveria chamar a global do simulador em outro .c
+e fazer um novo mutex para escrever na booleana "arrive" de cada processo. De qualquer forma
+todos os processos ficam presos nos semaforos antes do começo da simulação, assim não
+consumindo processamento na hora errada.
+- A versão usada da readline é a do pacote libreadline-dev.
 - Para maior segurança, certifique-se de que as entradas tem apenas um espaço
-separando cada informação, conforme mostrado no exemplo do item 6. .
+separando cada informação, conforme mostrado no exemplo do item 6.
 - uma chamada 'make clean' irá limpar todos os diretórios, menos o de 'inputs/'.
-Cuidado que as suas saídas serão deletadas de 'outputs/', também
+Cuidado que as suas saídas serão deletadas de 'outputs/', também.
