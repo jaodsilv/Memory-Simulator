@@ -8,13 +8,13 @@ declare -A process_finished
 declare -A process_duration
 input_name="test.txt"
 output_name="output.txt"
-runs=$4
+runs=$1
 input=1
 
 #3 inputs. test.txt, test1.txt and text2.txt
 while [ $input -le 3 ]; do
   # execute the ep1 'runs' times
-  sched=1
+  sched=5
 
   i=0
   while read p; do
@@ -23,7 +23,7 @@ while [ $input -le 3 ]; do
     let i=i+1
   done < inputs/$input_name
 
-  while [ $sched -le 6 ]; do
+  while [ $sched -le 5 ]; do
     cc=0
     count=1
     while [ $count -le $runs ]; do
@@ -112,7 +112,7 @@ while [ $input -le 3 ]; do
     filename="statistics.csv"
     if [ $sched -eq 1 ]; then
       if [ $input -eq 1 ]; then
-        echo "# (F) stands for finished and (D) for duration:" 1>$filename
+        echo "# (F) stands for finished and (D) for duration:" 1>>$filename
         echo "process, i, MEAN, SD, CI lower limit, CI upper limit" 1>>$filename
       fi
       echo "FCFS" 1>>$filename
