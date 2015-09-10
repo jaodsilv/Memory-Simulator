@@ -1,6 +1,6 @@
 void *ps(void *);
 void initialize_cores_ps(Core *, unsigned int);
-void fetch_process_ps(Process *, unsigned int, Rotation *);
+Rotation *fetch_process_ps(Process *, unsigned int, Rotation *);
 void use_core_ps(Process *, Core *, unsigned int);
 unsigned int finished_processes_ps(Process *, unsigned int);
 unsigned int check_cores_available_ps(Core *, unsigned int);

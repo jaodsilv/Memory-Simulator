@@ -57,7 +57,7 @@ void *ps(void *args)
     while(count != process->total) {
       if(process->total - count > cores)
         release_cores_ps(process->process, process->total, core, cores, quantum);
-      fetch_process_ps(process->process, process->total, list);
+      list = fetch_process_ps(process->process, process->total, list);
       next = select_ps(next, list);
 
       if(next != NULL) use_core_ps(next, core, cores);
@@ -231,7 +231,7 @@ int do_task_ps(Process *process)
 }
 
 /*Look up for new processes*/
-void fetch_process_ps(Process *process, unsigned int total, Rotation *list)
+Rotation *fetch_process_ps(Process *process, unsigned int total, Rotation *list)
 {
   Rotation *next;
   float sec;
@@ -247,7 +247,6 @@ void fetch_process_ps(Process *process, unsigned int total, Rotation *list)
 
   sec = (float)time.tv_sec + ((float)time.tv_nsec / 1000000000 );
   next = list;
-  while(next->next != list) next = next->next;
   for(i = 0; i < total; i++)
     if(sec >= process[i].arrival && !process[i].arrived) {
       if(list->process == NULL) {
@@ -257,16 +256,30 @@ void fetch_process_ps(Process *process, unsigned int total, Rotation *list)
       else {
         Rotation *new;
         new = malloc(sizeof(*new));
-        next->next = new;
-        new->process = &process[i];
-        new->next = list;
-        next = next->next;
+        if(list->process->priority < process[i].priority) {
+          while(next->next != list) next = next->next;
+          new->process = &process[i];
+          new->next = list;
+          next->next = new;
+          list = new;
+        }
+        else {
+          while(next->next->process->priority > process[i].priority && next->next != list) {
+            next = next->next;
+            continue;
+          }
+          new->process = &process[i];
+          new->next = next->next;
+          next->next = new;
+        }
       }
+      next = list;
 
       process[i].arrived = True;
       sem_post(&(process[i].next_stage));
       if(paramd) fprintf(stderr, "Process '%s' has arrived (trace file line %u)\n", process[i].name, i + 1);
     }
+    return list;
 }
 
 /*Selects next process to get a CPU*/
@@ -275,8 +288,9 @@ Process *select_ps(Process *next, Rotation *list)
   if(next == NULL && list->process != NULL) return list->process;
   else if(next != NULL) {
     Rotation *r;
-    for(r = list; r->process != next; r = r->next) continue;
-    return r->next->process;
+    for(r = list; (r->process->working || r->process->done) && r->next != list; r = r->next) continue;
+    if(r->next == list && r->process->working) return NULL;
+    else return r->process;
   }
   return NULL;
 }
