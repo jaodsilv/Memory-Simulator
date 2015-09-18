@@ -6,53 +6,33 @@
 
 using namespace std;
 
-int main(int argc, char **argv)
+#define PAGE_SIZE 16
+
+int main()
 {
-  char **args = NULL, wd[256] = "";
-  int i;
-
-  if(argc > 5 || argc < 4) {
-    fprintf(stderr, "\nep1 error: wrong number of arguments.\n");
-    return 1;
-  }
-  if(argv[3][0] == '\0') {
-    fprintf(stderr, "\nep1 error: unitialized expected arguments\n");
-    return 1;
-  }
-  for(i = 0; i < strlen(argv[1]); i++) if(!isdigit(argv[1][i])) {
-    fprintf(stderr, "\nep1 error: expected integer first argument\n");
-    return 1;
-  }
-  if(argv[1][0] < '1' || argv[1][0] > '6' || argv[1][1] != '\0') {
-    fprintf(stderr, "\nep1 error: first argument must be an integer from 1 to 6\n");
-    return 1;
-  }
-  if(argc == 5) {
-    if((argv[4][0] != '\0' && argv[4][0] != 'd') || (argv[4][0] == 'd' && argv[4][1] != '\0')) {
-      fprintf(stderr, "\nep1 error: the only valid value for the optional argument is 'd'\n");
-      return 1;
+  string command, path;
+  int espaco, substitui, intervalo;
+  while (true) {
+    cout << "[EP2]: ";
+    cin >> command;
+    if (command == "carrega") // Should also load the file;
+      cin >> path;
+    else if (command == "espaco")
+      cin >> espaco;
+    else if (command == "substitui")
+      cin >> substitui;
+    else if (command == "sai")
+      return EXIT_SUCCESS;
+    else if (command == "executa")
+    {
+      cin >> intervalo;
+      run(path, espaco, substitui, intervalo);
     }
+    else cerr << "\nep2 error: command not found: " << command << ".\n";
   }
-  if(getcwd(wd, sizeof(wd)) == NULL) {
-    fprintf(stderr, "ep1 error: couldn't get working directory.\n");
-    return 1;
-  }
-
-  args = malloc(4 * sizeof(*args));
-  args[0] = argv[1];
-  args[1] = argv[2];
-  args[2] = argv[3];
-  if(argc == 5) args[3] = argv[4];
-  else args[3] = "\0";
-
-  /*run process simulator*/
-  run(args, wd);
-
-  free(args); args = NULL;
-  return 0;
 }
 
-int run(char **argv, char *wd)
+int run(char *path, int espaco, int substitui, int intervalo)
 {
   unsigned int all = 0, *total = &all;
   Process *process, *p;
@@ -63,8 +43,8 @@ int run(char **argv, char *wd)
   }
   else process = p;
 
-  if(argv[3][0] == 'd') paramd = True;
-  else paramd = False;
+  if(argv[3][0] == 'd') paramd = true;
+  else paramd = false;
 
   if(process != NULL) {
     unsigned int scheduler;
@@ -286,11 +266,11 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
             if(process[j].priority < -20 || process[j].priority > 19) {
               fclose(fptr); return NULL;
             }
-            process[j].arrived = False;
-            process[j].done = False;
-            process[j].working = False;
-            process[j].failed = False;
-            process[j++].coordinator = False;
+            process[j].arrived = false;
+            process[j].done = false;
+            process[j].working = false;
+            process[j].failed = false;
+            process[j++].coordinator = false;
             if(j == size / 2) {
               process = realloc(process, (size * 2) * sizeof(*process));
               size *= 2;
@@ -300,7 +280,7 @@ Process *read_trace_file(Process *process, char *wd, char *tfile, unsigned int *
         break;
       }
     }
-    process[j].coordinator = True;
+    process[j].coordinator = true;
     process[j].total = *total;
     process[j++].process = process;
     fclose(fptr);
