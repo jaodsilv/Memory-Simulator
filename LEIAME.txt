@@ -1,12 +1,11 @@
-EP1 de MAC0422 - Sistemas Operacionais - Simulador de Processos + Minishell
+EP2 de MAC0422 - Sistemas Operacionais - Simulador de Gerenciador de Memória
 
 Integrantes: Renan Fichberg      7991131
              João M. M. da Silva 7577598
 
 1. Compilação
 
-Para compilação do código-fonte tanto do Minishell quanto do Simulador de
-Processes, binários ep1sh and ep1, respectivamente, basta invocar no terminal
+Para compilação do código-fonte basta invocar no terminal
 o seguinte comando, estando no diretório que contém o makefile:
 
 § make all
@@ -15,49 +14,6 @@ Tal chamada criará ambos os binários, mencionados acima, no mesmo diretório
 do makefile.
 
 2. Uso
-2.a. Minishell
-
-Para iniciar uma sessão no Minishell, você pode usar o seguinte comando, estando
-no diretório dos binários:
-
-§ ./ep1sh
-
-2.b. Simulador de Processos
-
-Para usar o simulador de processos, você pode usar o seguinte comando, estando
-no diretório dos binários:
-
-§ ./ep1 N input output d
-
-Tal comando pode ser executado tanto do Bash quanto do Minishell.
-Quanto aos argumentos:
-
-N - Número, de 1 a 6, da política de escalonamento a ser usada na simulação.
-A numeração segue a especificação do enunciado. Este argumento é OBRIGATÓRIO.
-
-input - Nome do arquivo de entrada com os vários processos a serem simulados.
-Atente a escrever direito o formato de entrada. No final deste documento estão
-alguns exemplos de entrada que podem ser usados. TODAS AS ENTRADAS DEVEM SER
-COLOCADAS NO DIRETÓRIO 'inputs/'. Este argumento é OBRIGATÓRIO.
-
-output - Nome do arquivo de saída, que conterá as informações da simulação.
-TODAS AS SAÍDAS SERÃO ESCRITAS NO DIRETÓRIO 'outputs/'. Este argumento
-é OBRIGATÓRIO.
-
-d - Conforme a simulação acontece, se o argumento 'd' foi passado, o simulador
-irá imprimir algumas informações em tempo de execução. Tais informações são as
-especificadas no enunciado. Este argumento é OPCIONAL.
-
-Exemplo de chamada:
-
-§ ./ep1 6 minha_entrada.txt minha_saida.txt d
-
-OBS1: Atente ao fato de que o programa não está esperando o nome dos arquivos
-de entrada e saída com os diretórios inputs/ e outputs/, respectivamente. O
-próprio simulador está programado para procurar as entradas em inputs/ e escrever
-em outputs/. O usuário só deve passar os nomes dos arquivos e garantir que as
-entradas estão no diretório correto.
-OBS2: A ordem dos argumentos DEVE ser respeitada.
 
 
 3. Organização.
@@ -73,9 +29,7 @@ diretórios.
 6) arquivos .h podem ser encontrados no diretório headers/
 7) slides podem ser encontrados no diretório presentation/
 
-O programa está organizado desta maneira para facilitar a localização dos itens e
-a listagem dos arquivos com a chamada do binários ls, em '/bin/ls -l' ser menos
-'carregada' (e mais legível).
+O programa está organizado desta maneira para facilitar a localização dos itens.
 
 4. Arquivos e diretórios.
 
@@ -88,76 +42,17 @@ localizações:
 4) outputs/ - diretório que conterá as informações da simulação após o término
 da sua execução
 5) source/ - diretório com o código-fonte
-6) source/ep1sh.c - código-fonte do Minishell.
-7) source/ep1.c - código-fonte do Simulador de Processos
-8) source/fcfs.c - código-fonte da 1a política de escolonamento (First Come
-First Served)
-9) source/sjf.c - código-fonte da 2a política de escolonamento (Shortest Job
-First)
-10) source/srtn.c - código-fonte da 3a política de escolonamento (Shortest
-Remaining Time Next)
-11) source/rr.c - código-fonte da 4a política de escolonamento (Round Robin)
-12) source/ps.c - código-fonte da 5a política de escolonamento (Priority
-Scheduling)
-13) source/edf.c - código-fonte da 6a política de escolonamento (Earliest
-Deadline First)
 14) source/obj/ - diretório que irá conter todos os arquivos .o
 15) headers/ - diretório com os .h
-16) headers/ep1sh.h - Cabeçalho de source/ep1sh.c
-17) headers/ep1.h - Cabeçalho de source/ep1.c
-18) headers/fcfs.h - Cabeçalho de source/fcfs.c
-19) headers/sjf.h - Cabeçalho de source/sjf.c
-20) headers/srtn.h - Cabeçalho de source/srtn.c
-21) headers/rr.h - Cabeçalho de source/rr.c
-22) headers/ps.h - Cabeçalho de source/ps.c
-23) headers/edf.h - Cabeçalho de source/edf.c
-24) headers/core.h - Cabeçalho que contém um estrutura 'core', usado nos
-escalonamentos
 25) presentation/slides.pdf - Slides a serem usados na apresentação em sala.
 
 5. Sobre o código.
 
-Foi decidido que cada escalonamento teria seus próprios .c e .h para deixar o
-código menos confuso, porém, resultando muita repetição de código. Será fácil
-perceber que há funções que são idênticas em algumas políticas de escalonamento.
-Fazer assim nos poupou de abrir vários blocos de 'if' no meio do código, e também
-de ficar carregando o número da política de escalonamento de um lado para o outro
-do programa.
 
 6. Exemplo de entrada.
 
-A seguir, um exemplo de entrada.
-
-1 process0 10 11.3 2
-3.2 process1 8.2 19.123 0
-3 process2 6 9 -14
-5 process3 15 23 2
-4 process4 9 12 12
-4 process5 3 9 10
-2 process6 30 40 0
-2 process7 40 60 1
-
-É esperado que as entradas sigam este padrão (número nome número número número,
-respeitando os espaços). Ainda, apesar do simulador ser inteligente para algumas
-coisas e não deixá-las passar (caso tenha sido encontrado algum valor absurdo,
-como uma prioridade fora do intervalo), está sendo considerado que o nosso
-usuário não tentará quebrar o programa.
-OBS: Note que no exemplo acima, o deadline do processo 4 é impossível de ser cumprido.
-O simulador NÃO trabalha fazendo checagens deste tipo.
 
 7. Observações.
 
-- O programa tem um vazamento de memório por culpa da função readline. A biblioteca
-não provê uma função para desalocar o prompt.
-- Nosso código do simulador cria as threads todas de uma vez antes do início da simulação,
-mas estas ficam presas num semáforo para que só comecem a executar no tempo t0 deles.
-Optamos por esta abordagem porque fez mais sentido para a nossa estrutura e porque fazer
-de outro jeito, para a nosso estrutura, envolveria chamar a global do simulador em outro .c
-e fazer um novo mutex para escrever na booleana "arrive" de cada processo. De qualquer forma
-todos os processos ficam presos nos semaforos antes do começo da simulação, assim não
-consumindo processamento na hora errada.
-- A versão usada da readline é a do pacote libreadline-dev.
-- Para maior segurança, certifique-se de que as entradas tem apenas um espaço
-separando cada informação, conforme mostrado no exemplo do item 6.
 - uma chamada 'make clean' irá limpar todos os diretórios, menos o de 'inputs/'.
 Cuidado que as suas saídas serão deletadas de 'outputs/', também.

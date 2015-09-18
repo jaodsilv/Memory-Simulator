@@ -1,8 +1,0 @@
-1 process0 10 11.3 2
-3.2 process1 8.2 19.123 0
-3 process2 6 9 -14
-5 process3 15 23 2
-4 process4 9 12 12
-4 process5 3 9 10
-2 process6 20 40 0
-2 process7 25 60 1
