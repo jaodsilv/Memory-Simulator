@@ -1,8 +1,8 @@
 ep2: ep2.o
-	g++ -o ep2 ep2.o -lm -pthread -g --pedantic -std=gnu++11
+	gcc -o ep2 ep2.o -pthread -lreadline
 
-ep1.o: source/ep1.cpp
-	g++ -c source/ep1.cpp -Wall --pedantic -std=gnu++11
+ep2.o: source/ep2.c
+	gcc -c source/ep2.c -Wall -pedantic -ansi
 
 clean:
 	rm -rf source/obj/*.o
