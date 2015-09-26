@@ -12,13 +12,17 @@
 char *get_cmd(char *);
 int expand(char *);
 int cmd_load(char *, char *);
+int cmd_space(char *, char *, int *);
+int cmd_subst(char *, char *, int *);
 int cmd_exit(char *);
 char *get_arg(char *, char *, char *);
 void unrecognized(char *);
 void free_pointer(void *);
+int sucessful_atoi(char *);
 
 int main(int argc, char **argv)
 {
+  int spcn = FF, sbsn = NRUP, *spc = &spcn, *sbs = &sbsn;
   char *cmd = NULL, *arg = NULL;
 
   using_history();
@@ -26,14 +30,15 @@ int main(int argc, char **argv)
 
     if((cmd = get_cmd(cmd)) == NULL) {
       printf("Expansion attempt has failed.\n");
-      free(cmd); cmd = NULL;
+      free_pointer((void*)cmd);
+      free_pointer((void*)arg);
       continue;
     }
 
     if(cmd_load(cmd, arg));
-    /*else if(cmd_space(cmd));
-    else if(cmd_subst(cmd));
-    else if(cmd_exec(cmd));*/
+    else if(cmd_space(cmd, arg, spc));
+    else if(cmd_subst(cmd, arg, sbs));
+    /*else if(cmd_exec(cmd));*/
     else if(cmd_exit(cmd)) break;
     else unrecognized(cmd);
 
@@ -68,7 +73,7 @@ int expand(char *cmd)
   return result;
 }
 
-/*Execute 'load' command*/
+/*Execute 'carrega' command*/
 int cmd_load(char *cmd, char *arg)
 {
   if(strncmp(cmd, "carrega", 7) == 0) {
@@ -93,6 +98,70 @@ int cmd_load(char *cmd, char *arg)
   }
   return 0;
 }
+
+/*Execute 'espaco' command*/
+int cmd_space(char *cmd, char *arg, int *spc)
+{
+  if(strncmp(cmd, "espaco", 6) == 0) {
+    if((arg = get_arg(cmd, arg, "espaco")) == NULL)
+      printf("Bad argument for 'espaco'.\n");
+    else {
+      if(sucessful_atoi(arg))
+        switch (*spc = atoi(arg)) {
+          case FF:
+            printf("Selected FF as the free memory space management algorithm.\n");
+            break;
+          case NF:
+            printf("Selected NF as the free memory space management algorithm.\n");
+            break;
+          case QF:
+            printf("Selected QF as the free memory space management algorithm.\n");
+            break;
+          default:
+            printf("Invalid option %d for free memory space management algorithm.\n", *spc);
+            break;
+        }
+        else
+          printf("Invalid option %s for free memory space management algorithm.\n", arg);
+    }
+    return 1;
+  }
+  return 0;
+}
+
+/*Execute 'substitui' command*/
+int cmd_subst(char *cmd, char *arg, int *sbs)
+{
+  if(strncmp(cmd, "substitui", 9) == 0) {
+    if((arg = get_arg(cmd, arg, "substitui")) == NULL)
+      printf("Bad argument for 'substitui'.\n");
+    else {
+      if(sucessful_atoi(arg))
+        switch (*sbs = atoi(arg)) {
+          case NRUP:
+            printf("Selected NRUP as the page substitution algorithm.\n");
+            break;
+          case FIFO:
+            printf("Selected FIFO as the page substitution algorithm.\n");
+            break;
+          case SCP:
+            printf("Selected SCP as the page substitution algorithm.\n");
+            break;
+          case LRUP:
+            printf("Selected LRUP as the page substitution algorithm.\n");
+            break;
+          default:
+            printf("Invalid option %d for page substitution algorithm.\n", *sbs);
+            break;
+        }
+        else
+          printf("Invalid option %s for page substitution algorithm.\n", arg);
+    }
+    return 1;
+  }
+  return 0;
+}
+
 
 /*Terminate session*/
 int cmd_exit(char *cmd)
@@ -127,8 +196,13 @@ void free_pointer(void *pointer)
   pointer = NULL;
 }
 
-
-
+/*Catch atoi function exception*/
+int sucessful_atoi(char *number)
+{
+  int i;
+  for(i = 0; number[i] != '\0'; i++) if(!isdigit(number[i])) return 0;
+  return 1;
+}
 
 
 /*
