@@ -9,19 +9,6 @@
 #include <readline/history.h>
 #include "../headers/ep2.h"
 
-char *get_cmd(char *);
-int expand(char *);
-int cmd_load(char *, char *);
-int cmd_space(char *, char *, int *);
-int cmd_subst(char *, char *, int *);
-int cmd_exec(char *, char *, float *);
-int cmd_exit(char *);
-char *get_arg(char *, char *, char *);
-void unrecognized(char *);
-void free_pointer(void *);
-int sucessful_atoi(char *);
-int sucessful_atof(char *);
-
 int main(int argc, char **argv)
 {
   int spcn = FF, sbsn = NRUP, *spc = &spcn, *sbs = &sbsn;
