@@ -14,15 +14,18 @@ int expand(char *);
 int cmd_load(char *, char *);
 int cmd_space(char *, char *, int *);
 int cmd_subst(char *, char *, int *);
+int cmd_exec(char *, char *, float *);
 int cmd_exit(char *);
 char *get_arg(char *, char *, char *);
 void unrecognized(char *);
 void free_pointer(void *);
 int sucessful_atoi(char *);
+int sucessful_atof(char *);
 
 int main(int argc, char **argv)
 {
   int spcn = FF, sbsn = NRUP, *spc = &spcn, *sbs = &sbsn;
+  float intrvln = 0, *intrvl = &intrvln;
   char *cmd = NULL, *arg = NULL;
 
   using_history();
@@ -38,7 +41,7 @@ int main(int argc, char **argv)
     if(cmd_load(cmd, arg));
     else if(cmd_space(cmd, arg, spc));
     else if(cmd_subst(cmd, arg, sbs));
-    /*else if(cmd_exec(cmd));*/
+    else if(cmd_exec(cmd, arg, intrvl));
     else if(cmd_exit(cmd)) break;
     else unrecognized(cmd);
 
@@ -118,11 +121,11 @@ int cmd_space(char *cmd, char *arg, int *spc)
             printf("Selected QF as the free memory space management algorithm.\n");
             break;
           default:
-            printf("Invalid option %d for free memory space management algorithm.\n", *spc);
+            printf("Invalid option '%d' for free memory space management algorithm.\n", *spc);
             break;
         }
         else
-          printf("Invalid option %s for free memory space management algorithm.\n", arg);
+          printf("Invalid option '%s' for free memory space management algorithm.\n", arg);
     }
     return 1;
   }
@@ -151,17 +154,38 @@ int cmd_subst(char *cmd, char *arg, int *sbs)
             printf("Selected LRUP as the page substitution algorithm.\n");
             break;
           default:
-            printf("Invalid option %d for page substitution algorithm.\n", *sbs);
+            printf("Invalid option '%d' for page substitution algorithm.\n", *sbs);
             break;
         }
         else
-          printf("Invalid option %s for page substitution algorithm.\n", arg);
+          printf("Invalid option '%s' for page substitution algorithm.\n", arg);
     }
     return 1;
   }
   return 0;
 }
 
+/*Execute 'executa' command*/
+int cmd_exec(char *cmd, char *arg, float *intrvl)
+{
+  if(strncmp(cmd, "executa", 7) == 0) {
+    if((arg = get_arg(cmd, arg, "executa")) == NULL)
+      printf("Bad argument for 'executa'.\n");
+    else {
+      if(sucessful_atof(arg)) {
+        *intrvl = atof(arg);
+        printf("Selected '%s' as the time interval.\n", arg);
+        /*
+        TODO: execute ep2. This function might need to receive *sbs, *spc and the loaded file
+        */
+      }
+      else
+        printf("Invalid option '%s' for interval.\n", arg);
+    }
+    return 1;
+  }
+  return 0;
+}
 
 /*Terminate session*/
 int cmd_exit(char *cmd)
@@ -204,11 +228,23 @@ int sucessful_atoi(char *number)
   return 1;
 }
 
+/*Catch atof function exception*/
+int sucessful_atof(char *number)
+{
+  int i, j = 0;
+  for(i = 0; number[i] != '\0'; i++) {
+    if(number[i] == '.' && j == 0) { j++; continue; }
+    if(!isdigit(number[i]) && j > 0) return 0;
+  }
+  return 1;
+}
+
 
 /*
 Notas:
 - Mudado para C pq não vejo necessidade de usar OOP
 - TODO: load file
+- TODO: execute ep2
 
 Observações:
 - Não tem saídas para serem escritas neste EP (I), e o arquivo de trace é localizado
