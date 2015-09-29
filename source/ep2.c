@@ -192,9 +192,12 @@ char *get_arg(char *cmd, char *arg, char *rqst)
 {
   int i, j = 0;
 
-  arg = malloc(strlen(cmd) * sizeof(*arg));
+  arg = (char*) malloc(strlen(cmd) * sizeof(*arg));
   for(i = strlen(rqst); isspace(cmd[i]); i++) continue;
-  if(cmd[i] == '\0') return NULL;
+  if(cmd[i] == '\0') {
+    free(arg);
+    return NULL;
+  }
   while(!isspace(cmd[i]) && cmd[i] != '\0') arg[j++] = cmd[i++];
   arg[j] = '\0';
   return arg;
