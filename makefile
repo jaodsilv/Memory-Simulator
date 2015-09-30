@@ -2,7 +2,7 @@ ep2: ep2.o
 	gcc -o ep2 ep2.o -pthread -lreadline
 
 ep2.o: source/ep2.c
-	gcc -c source/ep2.c -Wall -pedantic -ansi
+	gcc -c source/ep2.c -Wall -Wextra -pedantic -ansi
 
 clean:
 	rm -rf source/obj/*.o
