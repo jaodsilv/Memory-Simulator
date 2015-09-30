@@ -5,9 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <stdint.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "../headers/ep2.h"
+#include "../headers/memory.h"
+#include "../headers/process.h"
 
 int main(int argc, char **argv)
 {
@@ -79,6 +82,7 @@ int cmd_load(char *cmd, char *arg)
       }
       /*Absolute Path*/
       else strcpy(wd, arg);
+
       /******************************/
       /*Load file. Its name is in wd*/
       /*TODO: do_load_file_here*/

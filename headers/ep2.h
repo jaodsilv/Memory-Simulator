@@ -13,8 +13,6 @@ typedef int boolean;
 #define False 0
 #define True 1
 
-#define PAGE_SIZE 16 /* Page size in bytes */
-
 char *get_cmd(char *);
 int expand(char *);
 int cmd_load(char *, char *);
