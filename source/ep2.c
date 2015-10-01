@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <time.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "../headers/ep2.h"
@@ -15,11 +17,11 @@
 int main(int argc, char **argv)
 {
   int spcn = FF, sbsn = NRUP, *spc = &spcn, *sbs = &sbsn;
-  float intrvln = 0, *intrvl = &intrvln;
+  float intrvl = 0;
   char *cmd = NULL, *arg = NULL;
 
   using_history();
-  while(True) {
+  while(true) {
 
     if((cmd = get_cmd(cmd)) == NULL) {
       printf("Expansion attempt has failed.\n");
@@ -69,6 +71,12 @@ int expand(char *cmd)
 /*Execute 'carrega' command*/
 int cmd_load(char *cmd, char *arg)
 {
+  int tot, vir, t0, tf, b, pn, tn;
+  size_t buffer_size = 100;
+  int64_t id;
+  char * name, * buffer;
+  FILE * trace;
+
   if(strncmp(cmd, "carrega", 7) == 0) {
     if((arg = get_arg(cmd, arg, "carrega")) == NULL)
       printf("Bad argument for 'carrega'.\n");
@@ -83,10 +91,26 @@ int cmd_load(char *cmd, char *arg)
       /*Absolute Path*/
       else strcpy(wd, arg);
 
-      /******************************/
-      /*Load file. Its name is in wd*/
-      /*TODO: do_load_file_here*/
-      /******************************/
+      /* TODO: Validade if there happens any error. */
+      trace = fopen(wd, "r");
+
+      fscanf(trace, "%d %d\n", &tot, &vir);
+      create_mems(tot, vir);
+      name = (char *) malloc(buffer_size*sizeof(char));
+
+      while (fscanf(trace, "%d %s %d %d ", &t0, name, &tf, &b) != EOF) {
+        id = create_process(name, b);
+        add_event(START, t0, 0, id);
+        add_event(END, tf, 0, id);
+        getline(&buffer, &buffer_size, trace);
+        while (sscanf(buffer, "%d %d", &pn, &tn) != EOF) {
+          add_event(ACCESS, tn, pn, id);
+        }
+      }
+      fclose(trace);
+
+      free(buffer);
+      free(name);
     }
     return 1;
   }
@@ -157,18 +181,42 @@ int cmd_subst(char *cmd, char *arg, int *sbs)
 }
 
 /*Execute 'executa' command*/
-int cmd_exec(char *cmd, char *arg, float *intrvl)
+int cmd_exec(char *cmd, char *arg, float intrvl)
 {
+  Event * e;
+  struct timespec start_time, current_time;  /*Real time*/
+  int print_time = 0;
+
   if(strncmp(cmd, "executa", 7) == 0) {
     if((arg = get_arg(cmd, arg, "executa")) == NULL)
       printf("Bad argument for 'executa'.\n");
     else {
       if(sucessful_atof(arg)) {
-        *intrvl = atof(arg);
+        intrvl = atof(arg);
         printf("Selected '%s' as the time interval.\n", arg);
-        /*
-        TODO: execute ep2. This function might need to receive *sbs, *spc and the loaded file
-        */
+
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+        while((e = get_next_event()) != NULL) {
+
+          /* busy waiting til next event */
+
+          do {
+            clock_gettime(CLOCK_MONOTONIC, &current_time);
+            current_time.tv_sec = current_time.tv_sec - start_time.tv_sec;
+            if (print_time <= current_time.tv_sec) {
+              print_memory();
+              print_time += intrvl;
+            }
+          } while (e->time > current_time.tv_sec);
+
+          if(e->event_type == START) {
+            start_process(e->PID);
+          } else if(e->event_type == END) {
+            kill_process(e->PID);
+          } else {
+            access_memory(e->PID, e->position);
+          }
+        }
       }
       else
         printf("Invalid option '%s' for interval.\n", arg);
