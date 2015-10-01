@@ -8,9 +8,12 @@
 /* Each element of memory is a page */
 typedef int64_t *(memory[PAGE_SIZE/8]);
 
-FILE * create_vir_mem_file(int size);
-FILE * create_phy_mem_file(int size);
-boolean update_mem_file(FILE * file, memory mem, int pos, int64_t PID);
+bool create_mems(int phySize, int virSize);
+bool write_phy_mem(int page, int num_pages, int64_t PID);
+bool write_vir_mem(int page, int num_pages, int64_t PID);
+
+void access_memory(int64_t PID, int pos);
+void print_memory();
 
 /* TODO: Linked list for the memory information, free and ocuppied. */
 /* TODO: . */

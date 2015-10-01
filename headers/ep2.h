@@ -9,16 +9,19 @@
 #define SCP  3    /*Second-Chance Page*/
 #define LRUP 4    /*Least Recently Used Page*/
 
+/*
+trying to use stdbool to have a bit variable
 typedef int boolean;
 #define False 0
 #define True 1
+*/
 
 char *get_cmd(char *);
 int expand(char *);
 int cmd_load(char *, char *);
 int cmd_space(char *, char *, int *);
 int cmd_subst(char *, char *, int *);
-int cmd_exec(char *, char *, float *);
+int cmd_exec(char *, char *, float);
 int cmd_exit(char *);
 char *get_arg(char *, char *, char *);
 void unrecognized(char *);
