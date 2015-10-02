@@ -328,7 +328,7 @@ int cmd_exec(char *cmd, char *arg, float *intrvl, int *sbs, int *spc, int *load)
         }
 
         /*Do memory simulation*/
-        /*simulate(*spc, *sbs, *intrvl);*/
+        simulate(*spc, *sbs, *intrvl);
       }
       else
         printf("Invalid option '%s' for interval.\n", arg);
