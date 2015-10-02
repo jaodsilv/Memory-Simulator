@@ -87,8 +87,7 @@ int cmd_load(char *cmd, char *arg)
       /*Absolute Path*/
       else strcpy(wd, arg);
     }
-    read_trace_file(wd);
-    return 1;
+    return read_trace_file(wd);
   }
   return 0;
 }
