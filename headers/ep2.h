@@ -18,7 +18,7 @@ typedef int boolean;
 
 char *get_cmd(char *);
 int expand(char *);
-int cmd_load(char *, char *);
+int cmd_load(char *, char *, int *);
 int cmd_space(char *, char *, int *);
 int cmd_subst(char *, char *, int *);
 int cmd_exec(char *, char *, float *, int *);

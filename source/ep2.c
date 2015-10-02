@@ -21,6 +21,7 @@ int main()
 
   using_history();
   while(true) {
+    int ret;
     if((cmd = get_cmd(cmd)) == NULL) {
       printf("Expansion attempt has failed.\n");
       free(cmd); cmd = NULL;
@@ -28,7 +29,7 @@ int main()
       continue;
     }
 
-    if((*load = cmd_load(cmd, arg)));
+    if((ret = cmd_load(cmd, arg, load))) { if(ret != 0) file_loaded = ret; }
     else if(cmd_space(cmd, arg, spc));
     else if(cmd_subst(cmd, arg, sbs));
     else if(cmd_exec(cmd, arg, intrvl, load));
@@ -38,8 +39,19 @@ int main()
     free(cmd); cmd = NULL;
     free(arg); arg = NULL;
   }
+  if(*load == 1) {
+    unsigned int i;
+    printf("There is a file loaded from a previous execution. The program will now clean the previous data...\n");
+    for(i = 0; i < plength; i++) {
+      free(process[i].position); process[i].position = NULL;
+      free(process[i].time); process[i].time = NULL;
+    }
+    free(process); process = NULL;
+    printf("Done!\n");
+  }
   free(cmd); cmd = NULL;
   free(arg); arg = NULL;
+  printf("Program terminated.\n");
   return 0;
 }
 
@@ -67,7 +79,7 @@ int expand(char *cmd)
 }
 
 /*Execute 'carrega' command*/
-int cmd_load(char *cmd, char *arg)
+int cmd_load(char *cmd, char *arg, int *load)
 {
   if(strncmp(cmd, "carrega", 7) == 0) {
     char wd[1024];
@@ -76,6 +88,17 @@ int cmd_load(char *cmd, char *arg)
       return 0;
     }
     else {
+      /*Release last run allocations in case there were any*/
+      if(*load == 1) {
+        unsigned int i;
+        printf("There is a file loaded from a previous execution. The program will now clean the previous data... ");
+        for(i = 0; i < plength; i++) {
+          free(process[i].position); process[i].position = NULL;
+          free(process[i].time); process[i].time = NULL;
+        }
+        free(process); process = NULL;
+        printf("Done!\n");
+      }
       /*Relative path*/
       if(arg[0] != '/') {
         if(getcwd(wd, sizeof(wd)) == NULL) {
@@ -106,14 +129,14 @@ int read_trace_file(char *fname)
   process = malloc(plength * sizeof(*process));
 
   /*Opens trace file*/
-  printf("Reading trace file '%s'...\n", fname);
+  printf("Reading trace file '%s'...", fname);
   trace = fopen(fname, "r");
 
   /*Gets 'total' and 'virtual'*/
   fgets(buffer, 1024, trace);
   spaces = sscanf(buffer, "%u %u\n", &total, &virtual);
   if(spaces < 2) {
-    printf("Error: was expecting to find pattern '%cu %cu' (line 0).\n", 37, 37);
+    printf("\nError: was expecting to find pattern '%cu %cu' (line 0).\n", 37, 37);
     fclose(trace); return 0;
   }
 
@@ -122,7 +145,7 @@ int read_trace_file(char *fname)
     /*Get 't0 name tf b'*/
     spaces = sscanf(buffer, "%u %s %u %u ", &process[p].arrival, process[p].name, &process[p].finish, &process[p].size);
     if(spaces < 4) {
-      printf("Error: Failed retrieving 't0 name tf b'. Was expecting to find pattern '%cu %cs %cu %cu' (line %u).\n", 37, 37, 37, 37, p + 1);
+      printf("\nError: Failed retrieving 't0 name tf b'. Was expecting to find pattern '%cu %cs %cu %cu' (line %u).\n", 37, 37, 37, 37, p + 1);
       if(p > 0) {
         for(j = 0; j < p; j++) {
           free(process[j].position); process[j].position = NULL;
@@ -144,7 +167,7 @@ int read_trace_file(char *fname)
       }
     }
     if(k % 2 != 0) {
-      printf("Error. Missing one 'tn' for process '%s' (line %u).\n", process[p].name, p + 1);
+      printf("\nError. Missing one 'tn' for process '%s' (line %u).\n", process[p].name, p + 1);
       if(p > 0) {
         for(j = 0; j < p; j++) {
           free(process[j].position); process[j].position = NULL;
@@ -154,7 +177,7 @@ int read_trace_file(char *fname)
       fclose(trace); return 0;
     }
     if(k == 0) {
-      printf("Error. Missing 'pn tn' pairs for process '%s' (line %u).\n", process[p].name, p + 1);
+      printf("\nError. Missing 'pn tn' pairs for process '%s' (line %u).\n", process[p].name, p + 1);
       if(p > 0) {
         for(j = 0; j < p; j++) {
           free(process[j].position); process[j].position = NULL;
@@ -178,23 +201,49 @@ int read_trace_file(char *fname)
       unsigned int z;
       temporary = malloc((2 * plength) * sizeof(*temporary));
       for(z = 0; z < p; z++) {
+        unsigned int v;
         strcpy(temporary[z].name, process[z].name);
         temporary[z].size = process[z].size;
         temporary[z].arrival = process[z].arrival;
         temporary[z].finish = process[z].finish;
         temporary[z].length = process[z].length;
-        temporary[z].position = realloc(process[z].position, process[z].length);
-        temporary[z].time = realloc(process[z].time, process[z].length);
+        temporary[z].position = malloc(process[z].length * sizeof(int));
+        temporary[z].time = malloc(process[z].length * sizeof(int));
+        for(v = 0; v < process[z].length; v++) {
+          temporary[z].position[v] = process[z].position[v];
+          temporary[z].time[v] = process[z].time[v];
+        }
+        free(process[z].position); process[z].position = NULL;
+        free(process[z].time); process[z].time = NULL;
       }
       free(process); process = temporary; plength *= 2;
     }
   }
   fclose(trace);
   /*Realloc processes array to a size that matches the number of processes*/
-  process = realloc(process, p);
-  plength = p;
+  if(true) {
+    unsigned int z;
+    temporary = malloc(p * sizeof(*temporary));
+    for(z = 0; z < p; z++) {
+      unsigned int v;
+      strcpy(temporary[z].name, process[z].name);
+      temporary[z].size = process[z].size;
+      temporary[z].arrival = process[z].arrival;
+      temporary[z].finish = process[z].finish;
+      temporary[z].length = process[z].length;
+      temporary[z].position = malloc(process[z].length * sizeof(int));
+      temporary[z].time = malloc(process[z].length * sizeof(int));
+      for(v = 0; v < process[z].length; v++) {
+        temporary[z].position[v] = process[z].position[v];
+        temporary[z].time[v] = process[z].time[v];
+      }
+      free(process[z].position); process[z].position = NULL;
+      free(process[z].time); process[z].time = NULL;
+    }
+    free(process); process = temporary; plength = p;
+  }
 
-  printf("Done!\n");
+  printf(" Done!\n");
   return 1;
 }
 
