@@ -1,8 +1,8 @@
 ep2: ep2.o
-	gcc -o ep2 ep2.o -pthread -lreadline
+	gcc -o ep2 ep2.o -pthread -lreadline -g
 
 ep2.o: source/ep2.c
-	gcc -c source/ep2.c -Wall -Wextra -pedantic
+	gcc -c source/ep2.c -Wall -Wextra -pedantic -g
 
 clean:
 	rm -rf source/obj/*.o

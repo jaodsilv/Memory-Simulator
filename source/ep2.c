@@ -12,36 +12,34 @@
 #include <readline/history.h>
 #include "../headers/ep2.h"
 #include "../headers/memory.h"
-#include "../headers/process.h"
 
-int main(int argc, char **argv)
+int main()
 {
-  int spcn = FF, sbsn = NRUP, *spc = &spcn, *sbs = &sbsn;
-  float intrvl = 0;
+  int spcn = FF, sbsn = NRUP, *spc = &spcn, *sbs = &sbsn, file_loaded = 0, *load = &file_loaded;
+  float intrvln = 10, *intrvl = &intrvln;
   char *cmd = NULL, *arg = NULL;
 
   using_history();
   while(true) {
-
     if((cmd = get_cmd(cmd)) == NULL) {
       printf("Expansion attempt has failed.\n");
-      free_pointer((void*)cmd);
-      free_pointer((void*)arg);
+      free(cmd); cmd = NULL;
+      free(arg); arg = NULL;
       continue;
     }
 
-    if(cmd_load(cmd, arg));
+    if((*load = cmd_load(cmd, arg)));
     else if(cmd_space(cmd, arg, spc));
     else if(cmd_subst(cmd, arg, sbs));
-    else if(cmd_exec(cmd, arg, intrvl));
+    else if(cmd_exec(cmd, arg, intrvl, load));
     else if(cmd_exit(cmd)) break;
     else unrecognized(cmd);
 
-    free_pointer((void*)cmd);
-    free_pointer((void*)arg);
+    free(cmd); cmd = NULL;
+    free(arg); arg = NULL;
   }
-  free_pointer((void*)cmd);
-  free_pointer((void*)arg);
+  free(cmd); cmd = NULL;
+  free(arg); arg = NULL;
   return 0;
 }
 
@@ -71,51 +69,137 @@ int expand(char *cmd)
 /*Execute 'carrega' command*/
 int cmd_load(char *cmd, char *arg)
 {
-  int tot, vir, t0, tf, b, pn, tn;
-  size_t buffer_size = 100;
-  int64_t id;
-  char * name, * buffer;
-  FILE * trace;
-
   if(strncmp(cmd, "carrega", 7) == 0) {
-    if((arg = get_arg(cmd, arg, "carrega")) == NULL)
+    char wd[1024];
+    if((arg = get_arg(cmd, arg, "carrega")) == NULL) {
       printf("Bad argument for 'carrega'.\n");
+      return 0;
+    }
     else {
-      char wd[1024];
       /*Relative path*/
       if(arg[0] != '/') {
-        if(getcwd(wd, sizeof(wd)) == NULL)
+        if(getcwd(wd, sizeof(wd)) == NULL) {
           printf("Error while retrieving working directory.\n");
+          return 0;
+        }
         strcat(strcat(wd, "/"), arg);
       }
       /*Absolute Path*/
       else strcpy(wd, arg);
-
-      /* TODO: Validade if there happens any error. */
-      trace = fopen(wd, "r");
-
-      fscanf(trace, "%d %d\n", &tot, &vir);
-      create_mems(tot, vir);
-      name = (char *) malloc(buffer_size*sizeof(char));
-
-      while (fscanf(trace, "%d %s %d %d ", &t0, name, &tf, &b) != EOF) {
-        id = create_process(name, b);
-        add_event(START, t0, 0, id);
-        add_event(END, tf, 0, id);
-        getline(&buffer, &buffer_size, trace);
-        while (sscanf(buffer, "%d %d", &pn, &tn) != EOF) {
-          add_event(ACCESS, tn, pn, id);
-        }
-      }
-      fclose(trace);
-
-      free(buffer);
-      free(name);
     }
+    read_trace_file(wd);
     return 1;
   }
   return 0;
 }
+
+/*Reads the trace file, checking input and creates the array with all the processes.*/
+int read_trace_file(char *fname)
+{
+  FILE *trace;
+  int64_t pid;
+  unsigned int p = 0, i, spaces, lists[2048]; /*Maximum of 1024 pairs [pn, tn]*/
+  char c, buffer[4096], temp[1024], *data = buffer;
+  Process *temporary;
+
+  /*Allocate processes array*/
+  plength = 64;
+  process = malloc(plength * sizeof(*process));
+
+  /*Opens trace file*/
+  printf("Reading trace file '%s'...\n", fname);
+  trace = fopen(fname, "r");
+
+  /*Gets 'total' and 'virtual'*/
+  fgets(buffer, 1024, trace);
+  spaces = sscanf(buffer, "%u %u\n", &total, &virtual);
+  if(spaces < 2) {
+    printf("Error: was expecting to find pattern '%cu %cu' (line 0).\n", 37, 37);
+    fclose(trace); return 0;
+  }
+
+  while(fgets(buffer, 1024, trace) != NULL) {
+    unsigned int j = 0, k = 0;
+    /*Get 't0 name tf b'*/
+    spaces = sscanf(buffer, "%u %s %u %u ", &process[p].arrival, process[p].name, &process[p].finish, &process[p].size);
+    if(spaces < 4) {
+      printf("Error: Failed retrieving 't0 name tf b'. Was expecting to find pattern '%cu %cs %cu %cu' (line %u).\n", 37, 37, 37, 37, p + 1);
+      if(p > 0) {
+        for(j = 0; j < p; j++) {
+          free(process[j].position); process[j].position = NULL;
+          free(process[j].time); process[j].time = NULL;
+        }
+      }
+      fclose(trace); return 0;
+    }
+    /*Fix pointer position*/
+    for(c = buffer[i = spaces = 0]; spaces < 4; c = buffer[++i])
+      if(c == ' ') spaces++;
+    strcpy(buffer, data + i - 1);
+
+    /*Retrieve all 'pn tn' pairs*/
+    for(i = 0; i < strlen(buffer); i++) {
+      if(isdigit(buffer[i])) { temp[j++] = buffer[i];}
+      else if(j > 0 && (buffer[i] == ' ' || buffer[i] == '\n')) {
+        temp[j] = '\0'; lists[k++] = atoi(temp); j = 0;
+      }
+    }
+    if(k % 2 != 0) {
+      printf("Error. Missing one 'tn' for process '%s' (line %u).\n", process[p].name, p + 1);
+      if(p > 0) {
+        for(j = 0; j < p; j++) {
+          free(process[j].position); process[j].position = NULL;
+          free(process[j].time); process[j].time = NULL;
+        }
+      }
+      fclose(trace); return 0;
+    }
+    if(k == 0) {
+      printf("Error. Missing 'pn tn' pairs for process '%s' (line %u).\n", process[p].name, p + 1);
+      if(p > 0) {
+        for(j = 0; j < p; j++) {
+          free(process[j].position); process[j].position = NULL;
+          free(process[j].time); process[j].time = NULL;
+        }
+      }
+      fclose(trace); return 0;
+    }
+    process[p].length = k / 2;
+    process[p].position = malloc(process[p].length * sizeof(int));
+    process[p].time = malloc(process[p].length * sizeof(int));
+    for(i = 0; i < k; i++) {
+      /*Get pn*/
+      if(i % 2 == 0) process[p].position[i / 2] = lists[i];
+      /*Get tn*/
+      else process[p].time[i / 2] = lists[i];
+    }
+    p++;
+    /*Must realloc processes array*/
+    if(p == plength / 2) {
+      unsigned int z;
+      temporary = malloc((2 * plength) * sizeof(*temporary));
+      for(z = 0; z < p; z++) {
+        strcpy(temporary[z].name, process[z].name);
+        temporary[z].size = process[z].size;
+        temporary[z].arrival = process[z].arrival;
+        temporary[z].finish = process[z].finish;
+        temporary[z].length = process[z].length;
+        temporary[z].position = realloc(process[z].position, process[z].length);
+        temporary[z].time = realloc(process[z].time, process[z].length);
+      }
+      free(process); process = temporary; plength *= 2;
+    }
+  }
+  fclose(trace);
+  /*Realloc processes array to a size that matches the number of processes*/
+  process = realloc(process, p);
+  plength = p;
+
+  printf("Done!\n");
+  return 1;
+}
+
+
 
 /*Execute 'espaco' command*/
 int cmd_space(char *cmd, char *arg, int *spc)
@@ -181,7 +265,7 @@ int cmd_subst(char *cmd, char *arg, int *sbs)
 }
 
 /*Execute 'executa' command*/
-int cmd_exec(char *cmd, char *arg, float intrvl)
+int cmd_exec(char *cmd, char *arg, float *intrvl, int *load)
 {
   Event * e;
   struct timespec start_time, current_time;  /*Real time*/
@@ -192,31 +276,35 @@ int cmd_exec(char *cmd, char *arg, float intrvl)
       printf("Bad argument for 'executa'.\n");
     else {
       if(sucessful_atof(arg)) {
-        intrvl = atof(arg);
+        *intrvl = atof(arg);
         printf("Selected '%s' as the time interval.\n", arg);
 
-        clock_gettime(CLOCK_MONOTONIC, &start_time);
-        while((e = get_next_event()) != NULL) {
-
-          /* busy waiting til next event */
-
-          do {
-            clock_gettime(CLOCK_MONOTONIC, &current_time);
-            current_time.tv_sec = current_time.tv_sec - start_time.tv_sec;
-            if (print_time <= current_time.tv_sec) {
-              print_memory();
-              print_time += intrvl;
-            }
-          } while (e->time > current_time.tv_sec);
-
-          if(e->event_type == START) {
-            start_process(e->PID);
-          } else if(e->event_type == END) {
-            kill_process(e->PID);
-          } else {
-            access_memory(e->PID, e->position);
-          }
+        if(!(*load)) {
+          printf("You must load a trace file using command 'carrega' before executing the simulator.\n");
+          return 0;
         }
+
+        /*
+                clock_gettime(CLOCK_MONOTONIC, &start_time);
+                while((e = get_next_event()) != NULL) {
+
+                  do {
+                    clock_gettime(CLOCK_MONOTONIC, &current_time);
+                    current_time.tv_sec = current_time.tv_sec - start_time.tv_sec;
+                    if (print_time <= current_time.tv_sec) {
+                      print_memory();
+                      print_time += intrvl;
+                    }
+                  } while (e->time > current_time.tv_sec);
+
+                  if(e->event_type == START) {
+                    start_process(e->PID);
+                  } else if(e->event_type == END) {
+                    kill_process(e->PID);
+                  } else {
+                    access_memory(e->PID, e->position);
+                  }
+                }*/
       }
       else
         printf("Invalid option '%s' for interval.\n", arg);
@@ -247,19 +335,12 @@ char *get_arg(char *cmd, char *arg, char *rqst)
   arg = (char*) malloc(strlen(cmd) * sizeof(*arg));
   for(i = strlen(rqst); isspace(cmd[i]); i++) continue;
   if(cmd[i] == '\0') {
-    free(arg);
+    free(arg); arg = NULL;
     return NULL;
   }
   while(!isspace(cmd[i]) && cmd[i] != '\0') arg[j++] = cmd[i++];
   arg[j] = '\0';
   return arg;
-}
-
-/*Generic pointer disallocation function*/
-void free_pointer(void *pointer)
-{
-  if(pointer != NULL) free(pointer);
-  pointer = NULL;
 }
 
 /*Catch atoi function exception*/
