@@ -1,13 +1,10 @@
 #include <unistd.h>
-#include <pthread.h>
-#include <semaphore.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <time.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "../headers/ep2.h"
