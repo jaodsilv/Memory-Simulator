@@ -50,6 +50,7 @@ void add_event(int event_type, int time, int position, int PID);
 Event * get_next_event();
 void start_process(int64_t PID);
 void kill_process(int64_t PID);
+void simulate();
 
 
 /* TODO: Linked list for the memory information, free and ocuppied. */

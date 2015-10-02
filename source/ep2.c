@@ -32,7 +32,7 @@ int main()
     if((ret = cmd_load(cmd, arg, load))) { if(ret == 2) file_loaded = 1; }
     else if(cmd_space(cmd, arg, spc));
     else if(cmd_subst(cmd, arg, sbs));
-    else if(cmd_exec(cmd, arg, intrvl, load));
+    else if(cmd_exec(cmd, arg, intrvl, sbs, spc, load));
     else if(cmd_exit(cmd)) break;
     else unrecognized(cmd);
 
@@ -41,13 +41,13 @@ int main()
   }
   if(*load == 1) {
     unsigned int i;
-    printf("There is a file loaded from a previous execution. The program will now clean the previous data...\n");
+    printf("There is a file loaded from a previous execution. The program will now clean the previous data...");
     for(i = 0; i < plength; i++) {
       free(process[i].position); process[i].position = NULL;
       free(process[i].time); process[i].time = NULL;
     }
     free(process); process = NULL;
-    printf("Done!\n");
+    printf(" Done!\n");
   }
   free(cmd); cmd = NULL;
   free(arg); arg = NULL;
@@ -311,12 +311,8 @@ int cmd_subst(char *cmd, char *arg, int *sbs)
 }
 
 /*Execute 'executa' command*/
-int cmd_exec(char *cmd, char *arg, float *intrvl, int *load)
+int cmd_exec(char *cmd, char *arg, float *intrvl, int *sbs, int *spc, int *load)
 {
-  Event * e;
-  struct timespec start_time, current_time;  /*Real time*/
-  int print_time = 0;
-
   if(strncmp(cmd, "executa", 7) == 0) {
     if((arg = get_arg(cmd, arg, "executa")) == NULL)
       printf("Bad argument for 'executa'.\n");
@@ -325,32 +321,14 @@ int cmd_exec(char *cmd, char *arg, float *intrvl, int *load)
         *intrvl = atof(arg);
         printf("Selected '%s' as the time interval.\n", arg);
 
+        /*Must have loaded a file before using the simulator*/
         if(!(*load)) {
           printf("You must load a trace file using command 'carrega' before executing the simulator.\n");
           return 1;
         }
 
-        /*
-                clock_gettime(CLOCK_MONOTONIC, &start_time);
-                while((e = get_next_event()) != NULL) {
-
-                  do {
-                    clock_gettime(CLOCK_MONOTONIC, &current_time);
-                    current_time.tv_sec = current_time.tv_sec - start_time.tv_sec;
-                    if (print_time <= current_time.tv_sec) {
-                      print_memory();
-                      print_time += intrvl;
-                    }
-                  } while (e->time > current_time.tv_sec);
-
-                  if(e->event_type == START) {
-                    start_process(e->PID);
-                  } else if(e->event_type == END) {
-                    kill_process(e->PID);
-                  } else {
-                    access_memory(e->PID, e->position);
-                  }
-                }*/
+        /*Do memory simulation*/
+        /*simulate(*spc, *sbs, *intrvl);*/
       }
       else
         printf("Invalid option '%s' for interval.\n", arg);
@@ -412,7 +390,7 @@ int sucessful_atof(char *number)
 /*
 Notas:
 - Mudado para C pq não vejo necessidade de usar OOP
-- TODO: load file
+- TODO: Colocar PID nos processos
 - TODO: execute ep2
 
 Observações:
