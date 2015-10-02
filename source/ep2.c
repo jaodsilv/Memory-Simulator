@@ -29,7 +29,7 @@ int main()
       continue;
     }
 
-    if((ret = cmd_load(cmd, arg, load))) { if(ret != 0) file_loaded = ret; }
+    if((ret = cmd_load(cmd, arg, load))) { if(ret == 2) file_loaded = 1; }
     else if(cmd_space(cmd, arg, spc));
     else if(cmd_subst(cmd, arg, sbs));
     else if(cmd_exec(cmd, arg, intrvl, load));
@@ -103,7 +103,7 @@ int cmd_load(char *cmd, char *arg, int *load)
       if(arg[0] != '/') {
         if(getcwd(wd, sizeof(wd)) == NULL) {
           printf("Error while retrieving working directory.\n");
-          return 0;
+          return 1;
         }
         strcat(strcat(wd, "/"), arg);
       }
@@ -137,7 +137,7 @@ int read_trace_file(char *fname)
   spaces = sscanf(buffer, "%u %u\n", &total, &virtual);
   if(spaces < 2) {
     printf("\nError: was expecting to find pattern '%cu %cu' (line 0).\n", 37, 37);
-    fclose(trace); return 0;
+    fclose(trace); return 1;
   }
 
   while(fgets(buffer, 1024, trace) != NULL) {
@@ -152,7 +152,7 @@ int read_trace_file(char *fname)
           free(process[j].time); process[j].time = NULL;
         }
       }
-      fclose(trace); return 0;
+      fclose(trace); return 1;
     }
     /*Fix pointer position*/
     for(c = buffer[i = spaces = 0]; spaces < 4; c = buffer[++i])
@@ -174,7 +174,7 @@ int read_trace_file(char *fname)
           free(process[j].time); process[j].time = NULL;
         }
       }
-      fclose(trace); return 0;
+      fclose(trace); return 1;
     }
     if(k == 0) {
       printf("\nError. Missing 'pn tn' pairs for process '%s' (line %u).\n", process[p].name, p + 1);
@@ -184,7 +184,7 @@ int read_trace_file(char *fname)
           free(process[j].time); process[j].time = NULL;
         }
       }
-      fclose(trace); return 0;
+      fclose(trace); return 1;
     }
     process[p].length = k / 2;
     process[p].position = malloc(process[p].length * sizeof(int));
@@ -244,10 +244,8 @@ int read_trace_file(char *fname)
   }
 
   printf(" Done!\n");
-  return 1;
+  return 2;
 }
-
-
 
 /*Execute 'espaco' command*/
 int cmd_space(char *cmd, char *arg, int *spc)
@@ -329,7 +327,7 @@ int cmd_exec(char *cmd, char *arg, float *intrvl, int *load)
 
         if(!(*load)) {
           printf("You must load a trace file using command 'carrega' before executing the simulator.\n");
-          return 0;
+          return 1;
         }
 
         /*
