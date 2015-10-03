@@ -8,6 +8,11 @@
 #define END    1
 #define ACCESS 2
 
+/*Thread roles*/
+#define MANAGER 0      /*The manager is responsible for the simulation*/
+#define PRINTER 1      /*The printer is responsible for printing the simulation from time to time*/
+#define TIMER   2      /*The timer is the one responsible for writing the simulation time*/
+
 /*Structures*/
 typedef struct process {
 	uint8_t pid;          /*64 bit PID*/
@@ -21,6 +26,13 @@ typedef struct process {
   unsigned int *time;
 } Process;
 
+typedef struct thread {
+	int role;          /*Manager = 0, Printer = 1, Chronometer = 2*/
+	int spc;           /*Selected algorithm for free space management*/
+	int sbs;           /*Selected algorithm for page substitution*/
+	float intrvl;      /*Selected printing time interval*/
+} Thread;
+
 typedef struct event {
 	uint8_t pid;
 	int event_type;
@@ -30,10 +42,12 @@ typedef struct event {
 } Event;
 
 /*Globals*/
-unsigned int total;    /*Total physical memory*/
-unsigned int virtual;  /*Total virtual memory*/
-Process *process;      /*Array with all the processes*/
-unsigned int plength;     /*Total number of processes (it is the size of *process array)*/
+unsigned int total;            /*Total physical memory*/
+unsigned int virtual;          /*Total virtual memory*/
+Process *process;              /*Array with all the processes*/
+unsigned int plength;          /*Total number of processes (it is the size of *process array)*/
+struct timespec start;         /*Simulation starting time*/
+struct timespec finish;        /*Simulation finishing time*/
 
 /* Each subelement of memory strct has 64 bits, so it is 8 bytes
 Each element of memory is a page */
@@ -50,7 +64,11 @@ void add_event(int event_type, int time, int position, int PID);
 Event * get_next_event();
 void start_process(uint8_t PID);
 void kill_process(uint8_t PID);
+
 void simulate(int, int, float);
+void assign_thread_roles(Thread *, int, int, float);
+void do_simulation(pthread_t *, Thread *);
+void *run(void *);
 
 
 /* TODO: Linked list for the memory information, free and ocuppied. */
