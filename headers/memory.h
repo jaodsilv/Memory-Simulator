@@ -31,6 +31,7 @@ typedef struct thread {
 	int spc;           /*Selected algorithm for free space management*/
 	int sbs;           /*Selected algorithm for page substitution*/
 	float intrvl;      /*Selected printing time interval*/
+	int ready;         /*Used by the Manager to warn other threds that all is set to start the simulation*/
 } Thread;
 
 typedef struct event {

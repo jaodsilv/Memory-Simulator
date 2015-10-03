@@ -50,6 +50,9 @@ void *run(void *args)
 
   if(thread->role == MANAGER) {
     printf("I am the manager thread!\n");
+    /*TODO: create memory files here*/
+    thread->ready = 1;
+    /*Wait Tmer thread starts the simulation*/
     while(elapsed_time == -1) continue;
     while(simulating) {
 
@@ -59,6 +62,12 @@ void *run(void *args)
   if(thread->role == PRINTER) {
     float last = 0, t = 0, ret;
     printf("I am the printer thread!\n");
+    /*Wait Manager thread finish simulation preparations. Making a local assignment to avoid concurrency problems*/
+    while(true) {
+      int ready = (thread - 1)->ready;
+      if(ready) break;
+    }
+    /*Wait Tmer thread starts the simulation*/
     while(elapsed_time == -1) continue;
     while(simulating) {
       /*Idea: Assign atomically to ret first and then do a local comparission between ret and last to avoid using a semaphore*/
@@ -77,6 +86,11 @@ void *run(void *args)
     float t = 0;
     struct timespec now, range;
     printf("I am the timer thread!\n");
+    /*Wait Manager thread finish simulation preparations. Making a local assignment to avoid concurrency problems*/
+    while(true) {
+      int ready = (thread - 2)->ready;
+      if(ready) break;
+    }
     /*Starts simulation*/
     elapsed_time = 0; clock_gettime(CLOCK_MONOTONIC, &range);
     while(simulating) {
@@ -122,6 +136,7 @@ void assign_thread_roles(Thread *args, int spc, int sbs, float intrvl)
         args[MANAGER].role = MANAGER;
         args[MANAGER].spc = spc;
         args[MANAGER].sbs = sbs;
+        args[MANAGER].ready = 0;
         break;
       case PRINTER:
         args[PRINTER].role = PRINTER;
