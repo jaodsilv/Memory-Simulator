@@ -52,15 +52,20 @@ void *run(void *args)
     printf("I am the manager thread!\n");
     while(elapsed_time == -1) continue;
     while(simulating) {
-      
+
       /*simulating = 0;*/
     }
   }
   if(thread->role == PRINTER) {
+    float last = 0;
     printf("I am the printer thread!\n");
     while(elapsed_time == -1) continue;
     while(simulating) {
-
+      if(last != elapsed_time) {
+        last = elapsed_time;
+        printf("Printer: time is %.1f\n", last);
+        /*Do grab lock and print_memory here*/
+      }
     }
   }
   if(thread->role == TIMER) {
