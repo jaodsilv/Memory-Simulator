@@ -1,10 +1,6 @@
 #include <unistd.h>
 #include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "../headers/ep2.h"

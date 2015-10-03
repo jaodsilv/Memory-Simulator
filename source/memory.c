@@ -1,7 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <pthread.h>
 #include <time.h>
 #include "../headers/memory.h"
@@ -17,33 +13,15 @@ void simulate(int spc, int sbs, float intrvl)
   kind of stuff just for security. Unlike EP1, lets assure that no 'impossible' process can be
   created in order to don't fuck up with the statistics)*/
   /*********************************/
+
+  /*Initialize semaphore 'safe_access' to protect memory file access and free lists*/
+  if(!initialize_mutex()) return;
   /*Assign roles to threads*/
   assign_thread_roles(args, spc, sbs, intrvl);
   /*Create memory files*/
   create_memory(PHYSICAL); create_memory(VIRTUAL);
   /*Initialize simulator*/
   do_simulation(threads, args);
-
-
-  /*printf("Aqui o que deve ser usado:\n");
-  printf("Algoritmo espaco selecionado: %d\n", spc);
-  printf("Algoritmo paginacao selecionado: %d\n", sbs);
-  printf("Intervalo de tempo selecionado: %f\n", intrvl);
-  printf("Limites memórias: física = %u virtual = %u\n", total, virtual);
-
-  printf("Vetor com os %u processos:\n", plength);
-  if(1==1) {
-    unsigned int i;
-    for(i = 0; i < plength; i++) {
-      unsigned int j;
-      printf("Processo '%s': chegada = %u saida = %u tamanho = %u \n\tLista de Acessos [pn, tn]: ", process[i].name, process[i].arrival, process[i].finish, process[i].length);
-      for(j = 0; j < process[i].length; j++) {
-        printf("[%u , %u] ", process[i].position[j], process[i].time[j]);
-      }
-      printf("\n");
-    }
-  }
-  */
 }
 
 /*Run the simulation*/
@@ -80,7 +58,10 @@ void *run(void *args)
         last = ret; t += 0.1;
         if(t >= thread->intrvl) {
           unsigned int i; t = 0;
-          /*TODO: grab mutex here*/
+
+          sem_wait(&safe_access);
+
+          /*TODO: Print free list here*/
 
           /*IDEA: In order to operate considering the initial -1 value, we need to have
           both signed and unsigned integers of size 1b (as the enunciation of the EP commanded),
@@ -115,7 +96,7 @@ void *run(void *args)
           } printf("\n");
           fclose(mfile); fclose(mfile_u);
 
-          /*TODO: release mutex here*/
+          sem_post(&safe_access);
         }
       }
     }
@@ -210,4 +191,14 @@ void assign_thread_roles(Thread *args, int spc, int sbs, float intrvl)
         break;
     }
   }
+}
+
+/*Initialize mutex*/
+int initialize_mutex()
+{
+  if(sem_init(&safe_access, 0, 1) == -1) {
+    printf("Error initializing semaphore.\n");
+    return 0;
+  }
+  return 1;
 }

@@ -1,5 +1,8 @@
-/* needs #include <stdint.h> on .c */
-/* needs #include <stdio.h> on .c */
+#include <semaphore.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 /* Each PAGE has 16 bytes*/
 #define PAGE_SIZE 16 /* Page size in bytes */
@@ -52,6 +55,7 @@ Process *process;          /*Array with all the processes*/
 unsigned int plength;      /*Total number of processes (it is the size of *process array)*/
 float elapsed_time;        /*Simulation time*/
 int simulating;            /*Simulation finishes when this is set to 0 by the manager thread*/
+sem_t safe_access;         /*Mutex device to safely access free list and memory files*/
 
 /* Each subelement of memory strct has 64 bits, so it is 8 bytes
 Each element of memory is a page */
@@ -73,6 +77,7 @@ void assign_thread_roles(Thread *, int, int, float);
 void do_simulation(pthread_t *, Thread *);
 void *run(void *);
 void create_memory(int type);
+int initialize_mutex();
 
 
 /* TODO: Linked list for the memory information, free and ocuppied. */
