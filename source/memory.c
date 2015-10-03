@@ -1,7 +1,9 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <time.h>
 #include "../headers/memory.h"
 
 void simulate(int spc, int sbs, float intrvl)
@@ -46,16 +48,37 @@ void *run(void *args)
 {
   Thread *thread = ((Thread*) args);
 
-  switch(thread->role) {
-    case MANAGER:
-      printf("I am the manager thread!\n");
-      break;
-    case PRINTER:
-      printf("I am the printer thread!\n");
-      break;
-    case TIMER:
-      printf("I am the timer thread!\n");
-      break;
+  if(thread->role == MANAGER) {
+    printf("I am the manager thread!\n");
+    while(elapsed_time == -1) continue;
+    while(simulating) {
+      
+      /*simulating = 0;*/
+    }
+  }
+  if(thread->role == PRINTER) {
+    printf("I am the printer thread!\n");
+    while(elapsed_time == -1) continue;
+    while(simulating) {
+
+    }
+  }
+  if(thread->role == TIMER) {
+    float t = 0;
+    struct timespec now, range;
+    printf("I am the timer thread!\n");
+    /*Starts simulation*/
+    elapsed_time = 0; clock_gettime(CLOCK_MONOTONIC, &range);
+    while(simulating) {
+      clock_gettime(CLOCK_MONOTONIC, &now);
+      /*t is incremented by 0.1 every 0.1s*/
+      if(abs(now.tv_nsec - range.tv_nsec) > 100000000) {
+        /*Idea: increment a local 't' to assign time global 'elapsed_time' atomically and avoid the use of a semaphore*/
+        t += 0.1; elapsed_time = t;
+        /*Restart range*/
+        clock_gettime(CLOCK_MONOTONIC, &range);
+      }
+    }
   }
   return NULL;
 }
@@ -82,6 +105,7 @@ void do_simulation(pthread_t *threads, Thread *args)
 void assign_thread_roles(Thread *args, int spc, int sbs, float intrvl)
 {
   int i;
+  simulating = 1;
   for(i = 0; i < 3; i++) {
     switch(i) {
       case MANAGER:
@@ -94,6 +118,7 @@ void assign_thread_roles(Thread *args, int spc, int sbs, float intrvl)
         args[PRINTER].intrvl = intrvl;
         break;
       case TIMER:
+        elapsed_time = -1;
         args[TIMER].role = TIMER;
         break;
     }

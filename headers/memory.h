@@ -42,12 +42,12 @@ typedef struct event {
 } Event;
 
 /*Globals*/
-unsigned int total;            /*Total physical memory*/
-unsigned int virtual;          /*Total virtual memory*/
-Process *process;              /*Array with all the processes*/
-unsigned int plength;          /*Total number of processes (it is the size of *process array)*/
-struct timespec start;         /*Simulation starting time*/
-struct timespec finish;        /*Simulation finishing time*/
+unsigned int total;        /*Total physical memory*/
+unsigned int virtual;      /*Total virtual memory*/
+Process *process;          /*Array with all the processes*/
+unsigned int plength;      /*Total number of processes (it is the size of *process array)*/
+float elapsed_time;        /*Simulation time*/
+int simulating;            /*Simulation finishes when this is set to 0 by the manager thread*/
 
 /* Each subelement of memory strct has 64 bits, so it is 8 bytes
 Each element of memory is a page */
