@@ -57,14 +57,18 @@ void *run(void *args)
     }
   }
   if(thread->role == PRINTER) {
-    float last = 0;
+    float last = 0, t = 0;
     printf("I am the printer thread!\n");
     while(elapsed_time == -1) continue;
     while(simulating) {
       if(last != elapsed_time) {
         last = elapsed_time;
-        printf("Printer: time is %.1f\n", last);
-        /*Do grab lock and print_memory here*/
+        t += 0.1;
+        if(t >= thread->intrvl) {
+          t = 0;
+          printf("Printer: time is %.1f\n", last);
+          /*Do grab lock and print_memory here*/
+        }
       }
     }
   }
