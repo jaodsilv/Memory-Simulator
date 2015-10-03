@@ -116,7 +116,7 @@ int cmd_load(char *cmd, char *arg, int *load)
 int read_trace_file(char *fname)
 {
   FILE *trace;
-  int64_t pid;
+  uint8_t pid = 0;
   unsigned int p = 0, i, spaces, lists[2048]; /*Maximum of 1024 pairs [pn, tn]*/
   char c, buffer[4096], temp[1024], *data = buffer;
   Process *temporary;
@@ -192,6 +192,7 @@ int read_trace_file(char *fname)
       /*Get tn*/
       else process[p].time[i / 2] = lists[i];
     }
+
     p++;
     /*Must realloc processes array*/
     if(p == plength / 2) {
@@ -239,6 +240,9 @@ int read_trace_file(char *fname)
     }
     free(process); process = temporary; plength = p;
   }
+
+  /*Adds processes id.*/
+  for(i = 0; i < 256; i++) process[i].pid = pid++;
 
   printf(" Done!\n");
   return 2;
@@ -345,7 +349,7 @@ int cmd_exit(char *cmd)
 /*User invoked unknown command to ep1sh*/
 void unrecognized(char *cmd)
 {
-  printf("Unrecognized command \"%s\".\n", cmd);
+  printf("Unrecognized command '%s'.\n", cmd);
 }
 
 /*Get the argument for requested command 'rqst'*/

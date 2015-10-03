@@ -10,7 +10,7 @@
 
 /*Structures*/
 typedef struct process {
-	int64_t pid;          /*64 bit PID*/
+	uint8_t pid;          /*64 bit PID*/
 	char name[64];        /*Process name*/
 	unsigned int size;    /*Process' total space address*/
   unsigned int arrival; /*Time the process arrives*/
@@ -22,7 +22,7 @@ typedef struct process {
 } Process;
 
 typedef struct event {
-	int64_t pid;
+	uint8_t pid;
 	int event_type;
 	int time;
 	int position;
@@ -41,15 +41,15 @@ typedef int64_t *(memory[PAGE_SIZE/8]);
 
 /*Prototypes*/
 bool create_mems(int phySize, int virSize);
-bool write_phy_mem(int page, int num_pages, int64_t PID);
-bool write_vir_mem(int page, int num_pages, int64_t PID);
-void access_memory(int64_t PID, int pos);
+bool write_phy_mem(int page, int num_pages, uint8_t PID);
+bool write_vir_mem(int page, int num_pages, uint8_t PID);
+void access_memory(uint8_t PID, int pos);
 void print_memory();
 int64_t create_process(char* name, int mem_size);
 void add_event(int event_type, int time, int position, int PID);
 Event * get_next_event();
-void start_process(int64_t PID);
-void kill_process(int64_t PID);
+void start_process(uint8_t PID);
+void kill_process(uint8_t PID);
 void simulate(int, int, float);
 
 
