@@ -13,6 +13,8 @@ clean:
 	rm -rf outputs/*.txt
 	rm -rf a.out
 	rm ep2
+	rm /tmp/ep2.mem
+	rm /tmp/ep2.vir
 
 all: ep2
 	mv ./*.o source/obj/

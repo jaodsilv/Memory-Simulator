@@ -13,6 +13,10 @@
 #define PRINTER 1      /*The printer is responsible for printing the simulation from time to time*/
 #define TIMER   2      /*The timer is the one responsible for writing the simulation time*/
 
+/*Binary files creation*/
+#define PHYSICAL 0
+#define VIRTUAL  1
+
 /*Structures*/
 typedef struct process {
 	uint8_t pid;          /*64 bit PID*/
@@ -31,7 +35,6 @@ typedef struct thread {
 	int spc;           /*Selected algorithm for free space management*/
 	int sbs;           /*Selected algorithm for page substitution*/
 	float intrvl;      /*Selected printing time interval*/
-	int ready;         /*Used by the Manager to warn other threds that all is set to start the simulation*/
 } Thread;
 
 typedef struct event {
@@ -55,7 +58,6 @@ Each element of memory is a page */
 typedef int64_t *(memory[PAGE_SIZE/8]);
 
 /*Prototypes*/
-bool create_mems(int phySize, int virSize);
 bool write_phy_mem(int page, int num_pages, uint8_t PID);
 bool write_vir_mem(int page, int num_pages, uint8_t PID);
 void access_memory(uint8_t PID, int pos);
@@ -70,6 +72,7 @@ void simulate(int, int, float);
 void assign_thread_roles(Thread *, int, int, float);
 void do_simulation(pthread_t *, Thread *);
 void *run(void *);
+void create_memory(int type);
 
 
 /* TODO: Linked list for the memory information, free and ocuppied. */
