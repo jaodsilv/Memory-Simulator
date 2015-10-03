@@ -29,15 +29,23 @@ void *run(void *args)
 {
   Thread *thread = ((Thread*) args);
 
+  /*Manager thread*/
   if(thread->role == MANAGER) {
     printf("I am the manager thread!\n");
     /*Wait Timer thread starts the simulation*/
     while(elapsed_time == -1) continue;
     while(simulating) {
 
+      sem_wait(&safe_access_list);
+      sem_post(&safe_access_list);
+      sem_wait(&safe_access_memory);
+      sem_post(&safe_access_memory);
+
       /*simulating = 0;*/
     }
   }
+
+  /*Printer thread*/
   if(thread->role == PRINTER) {
     FILE *mfile, *mfile_u;
     float last = 0, t = 0, ret;
@@ -59,9 +67,9 @@ void *run(void *args)
         if(t >= thread->intrvl) {
           unsigned int i; t = 0;
 
-          sem_wait(&safe_access);
-
+          sem_wait(&safe_access_list);
           /*TODO: Print free list here*/
+          sem_post(&safe_access_list);
 
           /*IDEA: In order to operate considering the initial -1 value, we need to have
           both signed and unsigned integers of size 1b (as the enunciation of the EP commanded),
@@ -70,6 +78,7 @@ void *run(void *args)
           file, we use the signed values and file pointer to print it, otherwise, we use the
           unsigned ones*/
 
+          sem_wait(&safe_access_memory);
           /*Read physical binary file*/
           mfile = fopen("/tmp/ep2.mem", "rb");
           mfile_u = fopen("/tmp/ep2.mem", "rb");
@@ -95,8 +104,7 @@ void *run(void *args)
             else printf("%u ", virtual_array_u[i]);
           } printf("\n");
           fclose(mfile); fclose(mfile_u);
-
-          sem_post(&safe_access);
+          sem_post(&safe_access_memory);
         }
       }
     }
@@ -105,6 +113,8 @@ void *run(void *args)
     free(physical_array_u); physical_array_u = NULL;
     free(virtual_array_u); virtual_array_u = NULL;
   }
+
+  /*Timer thread*/
   if(thread->role == TIMER) {
     float t = 0;
     struct timespec now, range;
@@ -123,6 +133,60 @@ void *run(void *args)
     }
   }
   return NULL;
+}
+
+/*Write to the binary file in the selected positions 'npos' (in the '*positions' array)
+the process 'pid' to register he is using these positions.*/
+/*TODO: Still have to test but might be working as it is similar to create_memory and printer thread*/
+void write_to_memory(int type, unsigned int *positions, unsigned int npos, uint8_t pid)
+{
+  FILE *mfile, *mfile_u;
+  int8_t *n;
+  uint8_t *n_u;
+
+  switch (type) {
+    unsigned int i, j;
+    case PHYSICAL:
+      n = malloc(total * sizeof(*n));
+      n_u = malloc(total * sizeof(*n_u));
+
+      /*Read file contents*/
+      mfile = fopen("/tmp/ep2.mem", "rb");
+      mfile_u = fopen("/tmp/ep2.mem", "rb");
+      fread(n, sizeof(int8_t), (size_t)total, mfile);
+      fread(n_u, sizeof(uint8_t), (size_t)total, mfile_u);
+
+      /*Process identified by 'pid' is claiming to register new positions*/
+      for(i = 0, j = 0; i < total && j < npos; i++) {
+        if(n[i] < 0 && i == positions[j]) { n_u[i] = pid; j++; }
+        else if(i == positions[j]) { n_u[i] = pid; j++; }
+      }
+
+      /*Write claimed positions*/
+      fwrite(n_u, sizeof(uint8_t), (size_t)total, mfile_u);
+      break;
+    case VIRTUAL:
+      n = malloc(virtual * sizeof(*n));
+      n_u = malloc(virtual * sizeof(*n_u));
+
+      /*Read file contents*/
+      mfile = fopen("/tmp/ep2.vir", "rb");
+      mfile_u = fopen("/tmp/ep2.vir", "rb");
+      fread(n, sizeof(int8_t), (size_t)virtual, mfile);
+      fread(n_u, sizeof(uint8_t), (size_t)virtual, mfile_u);
+
+      /*Process identified by 'pid' is claiming to register new positions*/
+      for(i = 0, j = 0; i < virtual && j < npos; i++) {
+        if(n[i] < 0 && i == positions[j]) { n_u[i] = pid; j++; }
+        else if(i == positions[j]) { n_u[i] = pid; j++; }
+      }
+
+      /*Write claimed positions*/
+      fwrite(n_u, sizeof(uint8_t), (size_t)virtual, mfile_u);
+      break;
+  }
+  fclose(mfile); fclose(mfile_u);
+  free(n); n = NULL; free(n_u); n_u = NULL;
 }
 
 /*Write binary files to represent a memory*/
@@ -193,10 +257,14 @@ void assign_thread_roles(Thread *args, int spc, int sbs, float intrvl)
   }
 }
 
-/*Initialize mutex*/
+/*Initialize mutexes*/
 int initialize_mutex()
 {
-  if(sem_init(&safe_access, 0, 1) == -1) {
+  if(sem_init(&safe_access_memory, 0, 1) == -1) {
+    printf("Error initializing semaphore.\n");
+    return 0;
+  }
+  if(sem_init(&safe_access_list, 0, 1) == -1) {
     printf("Error initializing semaphore.\n");
     return 0;
   }

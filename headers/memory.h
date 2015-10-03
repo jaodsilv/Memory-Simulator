@@ -55,15 +55,16 @@ Process *process;          /*Array with all the processes*/
 unsigned int plength;      /*Total number of processes (it is the size of *process array)*/
 float elapsed_time;        /*Simulation time*/
 int simulating;            /*Simulation finishes when this is set to 0 by the manager thread*/
-sem_t safe_access;         /*Mutex device to safely access free list and memory files*/
+
+/*Mutex*/
+sem_t safe_access_memory;  /*Mutex device to safely access memory files*/
+sem_t safe_access_list;    /*Mutex device to safely access free lists*/
 
 /* Each subelement of memory strct has 64 bits, so it is 8 bytes
 Each element of memory is a page */
 typedef int64_t *(memory[PAGE_SIZE/8]);
 
 /*Prototypes*/
-bool write_phy_mem(int page, int num_pages, uint8_t PID);
-bool write_vir_mem(int page, int num_pages, uint8_t PID);
 void access_memory(uint8_t PID, int pos);
 void print_memory();
 int64_t create_process(char* name, int mem_size);
@@ -78,7 +79,7 @@ void do_simulation(pthread_t *, Thread *);
 void *run(void *);
 void create_memory(int type);
 int initialize_mutex();
-
+void write_to_memory(int, unsigned int *, unsigned int, uint8_t);
 
 /* TODO: Linked list for the memory information, free and ocuppied. */
 /* TODO: . */
