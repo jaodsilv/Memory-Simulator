@@ -57,13 +57,14 @@ void *run(void *args)
     }
   }
   if(thread->role == PRINTER) {
-    float last = 0, t = 0;
+    float last = 0, t = 0, ret;
     printf("I am the printer thread!\n");
     while(elapsed_time == -1) continue;
     while(simulating) {
-      if(last != elapsed_time) {
-        last = elapsed_time;
-        t += 0.1;
+      /*Idea: Assign atomically to ret first and then do a local comparission between ret and last to avoid using a semaphore*/
+      ret = elapsed_time;
+      if(last != ret) {
+        last = ret; t += 0.1;
         if(t >= thread->intrvl) {
           t = 0;
           printf("Printer: time is %.1f\n", last);
