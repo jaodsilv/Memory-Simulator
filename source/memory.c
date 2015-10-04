@@ -40,14 +40,34 @@ void *run(void *args)
     while(simulating) {
       unsigned int i;
 
+      /*Get time*/
       t = elapsed_time;
-      for(i = 0; i < plength; i++) {
+
+      /*Fetch arrivals*/
+      for(i = 0; i < plength; i++)
         if(process[i].arrival <= t && !process[i].allocated && !process[i].done)
           break;
+
+      /*Access list safely*/
+      if(i < plength) {
+        sem_wait(&safe_access_list);
+        if(fit(&process[i], thread->spc)) process[i].allocated = true;
+        sem_post(&safe_access_list);
       }
-      sem_wait(&safe_access_list);
-      if(i < plength && fit(&process[i], thread->spc)) process[i].allocated = true;
-      sem_post(&safe_access_list);
+
+      /*Fetch earlier finish*/
+      for(i = 0; i < plength; i++)
+        if(process[i].finish <= t && process[i].allocated && !process[i].done)
+          break;
+
+      /*Access list safely*/
+      if(i < plength) {
+        sem_wait(&safe_access_list);
+        if(unfit(&process[i])) process[i].done = true;
+        sem_post(&safe_access_list);
+      }
+
+      /*Access memory safely*/
       sem_wait(&safe_access_memory);
       sem_post(&safe_access_memory);
 
@@ -304,7 +324,6 @@ int memory_allocation(Free_List *fl, Process *process)
     new->base = fl->base + fl->limit;
     new->limit = old_limit - fl->limit;
   }
-  else if(old_limit == process->size) fl->next = NULL;
 
   return 1;
 }
@@ -333,28 +352,88 @@ int unfit(Process *process)
     return 0;
   }
 
-  /*If is to disallocate the head, select the next as the new head*/
-  if(p == head[0]) {
-    if(head[0] == head[3]) head[3] = p->next;
-    if(head[0] == head[2]) head[2] = p->next;
-    if(head[0] == head[1]) head[1] = p->next;
-    head[0] = p->next;
-  }
-  else if(p == head[1]) head[1] = p->next;
-  else if(p == head[2]) head[2] = p->next;
-  else if(p == head[3]) head[3] = p->next;
+  /*Disallocate process P*/
+  /*If in the middle of the list (not tail and not head)*/
+  if(p->previous != NULL && p->next != NULL) {
+    /*Case: process X | process P | process Y*/
+    if(p->previous->process != NULL && p->next->process != NULL)
+      p->process = NULL;
+    /*Case: free | process P | free*/
+    else if(p->previous->process == NULL && p->next->process == NULL) {
+      Free_List *kill;
+      if(p->previous == head[0]) {
+        if(head[0] == head[3]) head[3] = p;
+        if(head[0] == head[2]) head[2] = p;
+        if(head[0] == head[1]) head[1] = p;
+        head[0] = p;
+      }
+      else if(p->previous == head[1]) head[1] = p;
+      else if(p->previous == head[2]) head[2] = p;
+      else if(p->previous == head[3]) head[3] = p;
 
-  /*Disallocate*/
-  if(p->previous != NULL)
-    /*Correct pointers if not the head*/
-    p->previous->next = p->next;
-  if(p->next != NULL) {
-    /*Correct pointers and values if not the tail*/
-    p->next->previous = p->previous;
-    p->next->base = p->base;
-    p->next->limit += p->limit;
+      p->base = p->previous->base;
+      p->limit += (p->previous->limit + p->next->limit);
+      kill = p->previous;
+      p->previous = kill->previous;
+      if(kill->previous != NULL) kill->previous->next = p;
+      free(kill); kill = p->next;
+      p->next = kill->next;
+      if(kill->next != NULL) kill->next->previous = p;
+      free(kill); kill = NULL;
+      p->process = NULL;
+    }
+    /*Case: process X | process P | free*/
+    else if(p->previous->process != NULL && p->next->process == NULL) {
+      p->next->base = p->base;
+      p->next->limit += p->limit;
+      p->next->previous = p->previous;
+      p->previous->next = p->next;
+      free(p); p = NULL;
+    }
+    /*Case: free | process P | Process Y*/
+    else if(p->next->process != NULL && p->previous->process == NULL) {
+      p->previous->limit += p->limit;
+      p->previous->next = p->next;
+      p->next->previous = p->previous;
+      free(p); p = NULL;
+    }
   }
-  free(p); p = NULL;
+  /*If is the head*/
+  else if(p->previous == NULL && p->next != NULL) {
+    /*Case: Process P | Process Y*/
+    if(p->next->process != NULL)
+      p->process = NULL;
+    /*Case: Process P | free*/
+    else if(p->next->process == NULL) {
+      /*Select the next as the new head*/
+      if(p == head[0]) {
+        if(head[0] == head[3]) head[3] = p->next;
+        if(head[0] == head[2]) head[2] = p->next;
+        if(head[0] == head[1]) head[1] = p->next;
+        head[0] = p->next;
+      }
+      else if(p == head[1]) head[1] = p->next;
+      else if(p == head[2]) head[2] = p->next;
+      else if(p == head[3]) head[3] = p->next;
+
+      p->next->base = p->base;
+      p->next->limit += p->limit;
+      p->next->previous = p->previous;
+      free(p); p = NULL;
+    }
+  }
+  /*If is the tail*/
+  else if(p->previous != NULL && p->next == NULL) {
+    /*Case: Process X | Process P*/
+    if(p->previous->process != NULL)
+      p->process = NULL;
+    /*Case: free | Process P*/
+    else if(p->previous->process == NULL) {
+      p->previous->limit += p->limit;
+      p->previous->next = p->next;
+      free(p); p = NULL;
+    }
+  }
 
   return 1;
 }
