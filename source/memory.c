@@ -42,7 +42,7 @@ void *run(void *args)
 
       t = elapsed_time;
       for(i = 0; i < plength; i++) {
-        if(process[i].arrival >= t && !process[i].allocated && !process[i].done)
+        if(process[i].arrival <= t && !process[i].allocated && !process[i].done)
           break;
       }
       sem_wait(&safe_access_list);
@@ -80,10 +80,14 @@ void *run(void *args)
           printf("\nTIME: %.1f\n", last);
           sem_wait(&safe_access_list);
           printf("Free List state [process name (pid),  base, limit]:\n");
-          for(p = head; p != NULL; p = p->next) {
-            if(p->process != NULL) printf("[%s (%u), %u, %u]", p->process->name, p->process->pid, p->base, p->limit);
-            else printf("[free, %u, %u]", p->base, p->limit);
-            if(p->next != NULL) printf(" -> ");
+          p = head[i = 0]; while(p != NULL && i < 4) {
+            if(i == 0 || (i > 0 && head[i] != head[0])) {
+              if(p->process != NULL) printf("[%s (%u), %u, %u]", p->process->name, p->process->pid, p->base, p->limit);
+              else printf("[free, %u, %u]", p->base, p->limit);
+              if(p->next != NULL) printf(" -> ");
+            }
+            if(p->next == NULL && i < 4) { i++; continue; }
+            p = p->next;
           }
           printf("\n");
           sem_post(&safe_access_list);
@@ -262,7 +266,10 @@ void initialize_free_list(unsigned int size)
   fl->base = 0;
   fl->limit = size;
   nf_next = fl;
-  head = fl;
+  head[0] = fl;
+  head[1] = head[0];
+  head[2] = head[0];
+  head[3] = head[0];
 }
 
 /*Allocates memory for a new process in the free_list. Don't call this function!
@@ -311,7 +318,15 @@ int unfit(Process *process)
   Free_List *p;
 
   /*Fetch process*/
-  for(p = head; p->process != process && p != NULL; p = p->next) continue;
+  if(head[0] == head[1] && head[0] == head[2] && head[0] == head[3])
+    for(p = head[0]; p->process != process && p != NULL; p = p->next) continue;
+  else {
+    if(process->size > 256) for(p = head[3]; p->process != process && p != NULL; p = p->next) continue;
+    if(process->size > 64)  for(p = head[2]; p->process != process && p != NULL; p = p->next) continue;
+    if(process->size > 16)  for(p = head[1]; p->process != process && p != NULL; p = p->next) continue;
+    if(process->size <= 16) for(p = head[0]; p->process != process && p != NULL; p = p->next) continue;
+  }
+
   if(p == NULL) {
     /*Failed free. Process not found*/
     fprintf(stderr, "Error: failed to find allocated process.\n");
@@ -319,7 +334,15 @@ int unfit(Process *process)
   }
 
   /*If is to disallocate the head, select the next as the new head*/
-  if(p == head) head = p->next;
+  if(p == head[0]) {
+    if(head[0] == head[3]) head[3] = p->next;
+    if(head[0] == head[2]) head[2] = p->next;
+    if(head[0] == head[1]) head[1] = p->next;
+    head[0] = p->next;
+  }
+  else if(p == head[1]) head[1] = p->next;
+  else if(p == head[2]) head[2] = p->next;
+  else if(p == head[3]) head[3] = p->next;
 
   /*Disallocate*/
   if(p->previous != NULL)
@@ -351,11 +374,10 @@ int fit(Process *process, int fit_number)
       f = fetch_nf(process->size);
       ret = memory_allocation(f, process);
       break;
-    /*TODO: QF*/
-    /*case QF:
+    case QF:
       f = fetch_qf(process->size);
       ret = memory_allocation(f, process);
-      break;*/
+      break;
   }
   return ret;
 }
@@ -365,7 +387,7 @@ Free_List *fetch_ff(unsigned int size)
 {
   Free_List *p;
 
-  for(p = head; p != NULL; p = p->next)
+  for(p = head[0]; p != NULL; p = p->next)
     if(p->process == NULL && p->limit >= size) return p;
   return NULL;
 }
@@ -377,21 +399,34 @@ Free_List *fetch_nf(unsigned int size)
   while(p != nf_next || !tail) {
     if(p->process == NULL && p->limit >= size) return nf_next = p;
     if(p->next == NULL) {
-      p = head; tail = true; continue;
+      p = head[0]; tail = true; continue;
     }
     p = p->next;
   }
   return NULL;
 }
 
-/*TODO: QF*/
 /*Returns a free space where the process can fit in, according to QF policy*/
-/*Free_List *fetch_qf(unsigned int size)
+Free_List *fetch_qf(unsigned int size)
 {
   Free_List *p;
+
+
+  if(size > 256)
+    for(p = head[3];p != NULL; p = p->next)
+      if(p->process == NULL && p->limit >= size) return p;
+  if(size > 64)
+    for(p = head[2]; p != NULL; p = p->next)
+      if(p->process == NULL && p->limit >= size) return p;
+  if(size > 16)
+    for(p = head[1]; p != NULL; p = p->next)
+      if(p->process == NULL && p->limit >= size) return p;
+  if(size <= 16)
+    for(p = head[0]; p != NULL; p = p->next)
+      if(p->process == NULL && p->limit >= size) return p;
   return NULL;
 }
-*/
+
 
 /*Assign simulation roles to threads*/
 void assign_thread_roles(Thread *args, int spc, int sbs, float intrvl)

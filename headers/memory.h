@@ -80,7 +80,7 @@ Process *process;          /*Array with all the processes*/
 unsigned int plength;      /*Total number of processes (it is the size of *process array)*/
 float elapsed_time;        /*Simulation time*/
 int simulating;            /*Simulation finishes when this is set to 0 by the manager thread*/
-Free_List *head;           /*First cell of the free list*/
+Free_List *head[4];        /*First cell of the free list*/
 Free_List *nf_next;        /*Used by next fit algorithm to save last position*/
 
 /*Mutex*/
