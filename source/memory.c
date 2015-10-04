@@ -370,6 +370,7 @@ int unfit(Process *process)
       else if(p->previous == head[1]) head[1] = p;
       else if(p->previous == head[2]) head[2] = p;
       else if(p->previous == head[3]) head[3] = p;
+      if(p->previous == nf_next) nf_next = p;
 
       p->base = p->previous->base;
       p->limit += (p->previous->limit + p->next->limit);
@@ -384,6 +385,7 @@ int unfit(Process *process)
     }
     /*Case: process X | process P | free*/
     else if(p->previous->process != NULL && p->next->process == NULL) {
+      if(nf_next == p) nf_next = p->next;
       p->next->base = p->base;
       p->next->limit += p->limit;
       p->next->previous = p->previous;
@@ -392,6 +394,7 @@ int unfit(Process *process)
     }
     /*Case: free | process P | Process Y*/
     else if(p->next->process != NULL && p->previous->process == NULL) {
+      if(nf_next == p) nf_next = p->previous;
       p->previous->limit += p->limit;
       p->previous->next = p->next;
       p->next->previous = p->previous;
@@ -415,6 +418,7 @@ int unfit(Process *process)
       else if(p == head[1]) head[1] = p->next;
       else if(p == head[2]) head[2] = p->next;
       else if(p == head[3]) head[3] = p->next;
+      if(nf_next == p) nf_next = p->next;
 
       p->next->base = p->base;
       p->next->limit += p->limit;
@@ -429,6 +433,7 @@ int unfit(Process *process)
       p->process = NULL;
     /*Case: free | Process P*/
     else if(p->previous->process == NULL) {
+      if(nf_next == p) nf_next = p->previous;
       p->previous->limit += p->limit;
       p->previous->next = p->next;
       free(p); p = NULL;
