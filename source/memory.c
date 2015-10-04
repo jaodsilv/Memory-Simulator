@@ -97,7 +97,7 @@ void *run(void *args)
           Free_List *p;
           unsigned int i; t = 0;
 
-          printf("\nTIME: %.1f\n", last);
+          printf("\nTIME: %.1fs\n", last);
           sem_wait(&safe_access_list);
           printf("Free List state [process name (pid),  base, limit]:\n");
           p = head[i = 0]; while(p != NULL && i < 4) {
@@ -494,7 +494,6 @@ Free_List *fetch_nf(unsigned int size)
 Free_List *fetch_qf(unsigned int size)
 {
   Free_List *p;
-
 
   if(size > 256)
     for(p = head[3];p != NULL; p = p->next)

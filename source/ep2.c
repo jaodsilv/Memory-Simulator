@@ -122,8 +122,11 @@ int read_trace_file(char *fname)
   process = malloc(plength * sizeof(*process));
 
   /*Opens trace file*/
+  if((trace = fopen(fname, "r")) == NULL) {
+    printf("Error: failed to open file '%s'.\n", fname);
+    return 1;
+  }
   printf("Reading trace file '%s'...", fname);
-  trace = fopen(fname, "r");
 
   /*Gets 'total' and 'virtual'*/
   fgets(buffer, 1024, trace);
