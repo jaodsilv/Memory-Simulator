@@ -4,6 +4,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/*Free space*/
+#define FF 1      /*First Fit*/
+#define NF 2      /*Next Fit*/
+#define QF 3      /*Quick Fit*/
+
+/*Page substitution*/
+#define NRUP 1    /*Not Recently Used Page*/
+#define FIFO 2    /*First-In, First-Out*/
+#define SCP  3    /*Second-Chance Page*/
+#define LRUP 4    /*Least Recently Used Page*/
+
 /* Each PAGE has 16 bytes*/
 #define PAGE_SIZE 16 /* Page size in bytes */
 /* Actions types */
@@ -31,6 +42,10 @@ typedef struct process {
   unsigned int length;  /*Size of both position and time arrays*/
   unsigned int *position;
   unsigned int *time;
+	/*Control variables*/
+	bool done;            /*Processes finished?*/
+	/*TODO: check if this one (allocated) is the best way to implement. Can a process be allocated in more than one contiguous memory? Ex: process.pid = 3 is allocated at memories 3, 4, 5 and 10, 12, 14, 15. Is this allowed?*/
+	bool allocated;       /*Process not finished but it is allocated?*/
 } Process;
 
 typedef struct thread {
@@ -39,6 +54,16 @@ typedef struct thread {
 	int sbs;           /*Selected algorithm for page substitution*/
 	float intrvl;      /*Selected printing time interval*/
 } Thread;
+
+typedef struct free_list {
+  Process *process;             /*If process = NULL, it is an empty space*/
+  unsigned int base;            /*Base register. The first space of a contiguous memory this process is occupying*/
+  unsigned int limit;           /*Limit register. This is the size of the congiguous space this process is occupying*/
+	/*NOTE: base + limit - 1 is the last space of the contiguous memory being occupied. Thus, for base = 3 and limit = 4
+	this process occupies spaces 3, 4, 5 and 6 (limit = 4 numbers)*/
+  struct free_list *previous;   /*Previous element in the list. If previous = NULL, this is the first element (head)*/
+  struct free_list *next;       /*Next element in the list. If element = NULL, this is the last element (tail)*/
+} Free_List;
 
 typedef struct event {
 	uint8_t pid;
@@ -55,6 +80,8 @@ Process *process;          /*Array with all the processes*/
 unsigned int plength;      /*Total number of processes (it is the size of *process array)*/
 float elapsed_time;        /*Simulation time*/
 int simulating;            /*Simulation finishes when this is set to 0 by the manager thread*/
+Free_List *head;           /*First cell of the free list*/
+Free_List *nf_next;        /*Used by next fit algorithm to save last position*/
 
 /*Mutex*/
 sem_t safe_access_memory;  /*Mutex device to safely access memory files*/
@@ -64,7 +91,7 @@ sem_t safe_access_list;    /*Mutex device to safely access free lists*/
 Each element of memory is a page */
 typedef int64_t *(memory[PAGE_SIZE/8]);
 
-/*Prototypes*/
+/*TODO: working on this functions (not exactly with this signature)*/
 void access_memory(uint8_t PID, int pos);
 void print_memory();
 int64_t create_process(char* name, int mem_size);
@@ -73,13 +100,23 @@ Event * get_next_event();
 void start_process(uint8_t PID);
 void kill_process(uint8_t PID);
 
+/*Simulator setup & initialization prototypes*/
 void simulate(int, int, float);
 void assign_thread_roles(Thread *, int, int, float);
 void do_simulation(pthread_t *, Thread *);
 void *run(void *);
-void create_memory(int type);
 int initialize_mutex();
+/*Memory files manipulation prototypes*/
+void create_memory(int type);
 void write_to_memory(int, unsigned int *, unsigned int, uint8_t);
+/*Free List manipulation prototypes*/
+void initialize_free_list(unsigned int);
+int memory_allocation(Free_List *, Process *);
+int fit(Process *, int);
+int unfit(Process *);
+Free_List *fetch_ff(/*Args*/);
+Free_List *fetch_nf(/*Args*/);
+Free_List *fetch_qf(/*Args*/);
 
 /* TODO: Linked list for the memory information, free and ocuppied. */
 /* TODO: . */

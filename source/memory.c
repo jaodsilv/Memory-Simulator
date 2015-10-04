@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <time.h>
+#include <math.h>
 #include "../headers/memory.h"
 
 void simulate(int spc, int sbs, float intrvl)
@@ -20,6 +21,8 @@ void simulate(int spc, int sbs, float intrvl)
   assign_thread_roles(args, spc, sbs, intrvl);
   /*Create memory files*/
   create_memory(PHYSICAL); create_memory(VIRTUAL);
+  /*Initialize a free list*/
+  initialize_free_list(total);
   /*Initialize simulator*/
   do_simulation(threads, args);
 }
@@ -31,12 +34,19 @@ void *run(void *args)
 
   /*Manager thread*/
   if(thread->role == MANAGER) {
-    printf("I am the manager thread!\n");
+    float t;
     /*Wait Timer thread starts the simulation*/
     while(elapsed_time == -1) continue;
     while(simulating) {
+      unsigned int i;
 
+      t = elapsed_time;
+      for(i = 0; i < plength; i++) {
+        if(process[i].arrival >= t && !process[i].allocated && !process[i].done)
+          break;
+      }
       sem_wait(&safe_access_list);
+      if(i < plength && fit(&process[i], thread->spc)) process[i].allocated = true;
       sem_post(&safe_access_list);
       sem_wait(&safe_access_memory);
       sem_post(&safe_access_memory);
@@ -56,7 +66,6 @@ void *run(void *args)
     virtual_array = malloc(virtual * sizeof(*virtual_array));
     physical_array_u = malloc(total * sizeof(*physical_array_u));
     virtual_array_u = malloc(virtual * sizeof(*virtual_array_u));
-    printf("I am the printer thread!\n");
     /*Wait Timer thread starts the simulation*/
     while(elapsed_time == -1) continue;
     while(simulating) {
@@ -65,10 +74,18 @@ void *run(void *args)
       if(last != ret) {
         last = ret; t += 0.1;
         if(t >= thread->intrvl) {
+          Free_List *p;
           unsigned int i; t = 0;
 
+          printf("\nTIME: %.1f\n", last);
           sem_wait(&safe_access_list);
-          /*TODO: Print free list here*/
+          printf("Free List state [process name (pid),  base, limit]:\n");
+          for(p = head; p != NULL; p = p->next) {
+            if(p->process != NULL) printf("[%s (%u), %u, %u]", p->process->name, p->process->pid, p->base, p->limit);
+            else printf("[free, %u, %u]", p->base, p->limit);
+            if(p->next != NULL) printf(" -> ");
+          }
+          printf("\n");
           sem_post(&safe_access_list);
 
           /*IDEA: In order to operate considering the initial -1 value, we need to have
@@ -79,6 +96,7 @@ void *run(void *args)
           unsigned ones*/
 
           sem_wait(&safe_access_memory);
+          printf("Physical memory state (binary file):\n");
           /*Read physical binary file*/
           mfile = fopen("/tmp/ep2.mem", "rb");
           mfile_u = fopen("/tmp/ep2.mem", "rb");
@@ -92,6 +110,7 @@ void *run(void *args)
           } printf("\n");
           fclose(mfile); fclose(mfile_u);
 
+          printf("Virtual memory state (binary file):\n");
           /*Read virtual binary file*/
           mfile = fopen("/tmp/ep2.vir", "rb");
           mfile_u = fopen("/tmp/ep2.vir", "rb");
@@ -118,7 +137,6 @@ void *run(void *args)
   if(thread->role == TIMER) {
     float t = 0;
     struct timespec now, range;
-    printf("I am the timer thread!\n");
     /*Starts simulation*/
     elapsed_time = 0; clock_gettime(CLOCK_MONOTONIC, &range);
     while(simulating) {
@@ -232,6 +250,148 @@ void do_simulation(pthread_t *threads, Thread *args)
     }
   }
 }
+
+/*Initiates the free list, returning the first cell.*/
+void initialize_free_list(unsigned int size)
+{
+  Free_List *fl;
+  fl = malloc(sizeof(*fl));
+  fl->process = NULL;
+  fl->previous = NULL;
+  fl->next = NULL;
+  fl->base = 0;
+  fl->limit = size;
+  nf_next = fl;
+  head = fl;
+}
+
+/*Allocates memory for a new process in the free_list. Don't call this function!
+  Call "fit" function to do the job.*/
+int memory_allocation(Free_List *fl, Process *process)
+{
+  Free_List *new;
+  unsigned int old_limit;
+
+  /*Allocated cell*/
+  if(fl != NULL && fl->process == NULL) {
+    old_limit = fl->limit;
+    fl->process = process;
+    fl->limit = process->size;
+  }
+  else {
+    /*Bad cell selected by fetch algorithm.*/
+    if(fl != NULL)
+      fprintf(stderr, "Error: bad fetch. Was expecting an available memory space.\n");
+    return 0;
+  }
+
+
+  /*Remaining free space. There will be no remaining free space
+  from the old cell if fl->limit == process->size*/
+  if(old_limit > process->size) {
+    new = malloc(sizeof(*new));
+    new->previous = fl;
+    new->process = NULL;
+    new->next = fl->next;
+    fl->next = new;
+    new->base = fl->base + fl->limit;
+    new->limit = old_limit - fl->limit;
+  }
+  else if(old_limit == process->size) fl->next = NULL;
+
+  return 1;
+}
+
+/*Frees memory from the free_list previously allocated by process *process.
+*fl is the pointer to the first cell of the free_list
+Note: this function DOES NOT disallocates the process
+*/
+int unfit(Process *process)
+{
+  Free_List *p;
+
+  /*Fetch process*/
+  for(p = head; p->process != process && p != NULL; p = p->next) continue;
+  if(p == NULL) {
+    /*Failed free. Process not found*/
+    fprintf(stderr, "Error: failed to find allocated process.\n");
+    return 0;
+  }
+
+  /*If is to disallocate the head, select the next as the new head*/
+  if(p == head) head = p->next;
+
+  /*Disallocate*/
+  if(p->previous != NULL)
+    /*Correct pointers if not the head*/
+    p->previous->next = p->next;
+  if(p->next != NULL) {
+    /*Correct pointers and values if not the tail*/
+    p->next->previous = p->previous;
+    p->next->base = p->base;
+    p->next->limit += p->limit;
+  }
+  free(p); p = NULL;
+
+  return 1;
+}
+
+/*Attempts to fit a process into the free_list using the correct fetch algorithm*/
+int fit(Process *process, int fit_number)
+{
+  int ret;
+
+  switch(fit_number) {
+    Free_List *f;
+    case FF:
+      f = fetch_ff(process->size);
+      ret = memory_allocation(f, process);
+      break;
+    case NF:
+      f = fetch_nf(process->size);
+      ret = memory_allocation(f, process);
+      break;
+    /*TODO: QF*/
+    /*case QF:
+      f = fetch_qf(process->size);
+      ret = memory_allocation(f, process);
+      break;*/
+  }
+  return ret;
+}
+
+/*Returns a free space where the process can fit in, according to FF policy*/
+Free_List *fetch_ff(unsigned int size)
+{
+  Free_List *p;
+
+  for(p = head; p != NULL; p = p->next)
+    if(p->process == NULL && p->limit >= size) return p;
+  return NULL;
+}
+
+/*Returns a free space where the process can fit in, according to NF policy*/
+Free_List *fetch_nf(unsigned int size)
+{
+  Free_List *p; bool tail = false; p = nf_next;
+  while(p != nf_next || !tail) {
+    if(p->process == NULL && p->limit >= size) return nf_next = p;
+    if(p->next == NULL) {
+      p = head; tail = true; continue;
+    }
+    p = p->next;
+  }
+  return NULL;
+}
+
+/*TODO: QF*/
+/*Returns a free space where the process can fit in, according to QF policy*/
+/*Free_List *fetch_qf(unsigned int size)
+{
+  Free_List *p;
+  return NULL;
+}
+*/
 
 /*Assign simulation roles to threads*/
 void assign_thread_roles(Thread *args, int spc, int sbs, float intrvl)

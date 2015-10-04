@@ -189,7 +189,8 @@ int read_trace_file(char *fname)
       else process[p].time[i / 2] = lists[i];
     }
 
-    p++;
+    process[p].done = false;
+    process[p++].allocated = false;
     /*Must realloc processes array*/
     if(p == plength / 2) {
       unsigned int z;
