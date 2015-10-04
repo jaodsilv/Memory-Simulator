@@ -91,15 +91,7 @@ sem_t safe_access_list;    /*Mutex device to safely access free lists*/
 Each element of memory is a page */
 typedef int64_t *(memory[PAGE_SIZE/8]);
 
-/*TODO: working on this functions (not exactly with this signature)*/
-void access_memory(uint8_t PID, int pos);
-void print_memory();
-int64_t create_process(char* name, int mem_size);
-void add_event(int event_type, int time, int position, int PID);
-Event * get_next_event();
-void start_process(uint8_t PID);
-void kill_process(uint8_t PID);
-
+/*Prototypes*/
 /*Simulator setup & initialization prototypes*/
 void simulate(int, int, float);
 void assign_thread_roles(Thread *, int, int, float);
@@ -114,9 +106,19 @@ void initialize_free_list(unsigned int);
 int memory_allocation(Free_List *, Process *);
 int fit(Process *, int);
 int unfit(Process *);
-Free_List *fetch_ff(/*Args*/);
-Free_List *fetch_nf(/*Args*/);
-Free_List *fetch_qf(/*Args*/);
+Free_List *fetch_ff(unsigned int);
+Free_List *fetch_nf(unsigned int);
+Free_List *fetch_qf(unsigned int);
+
+/*TODO: working on these functions (not exactly with this signature)*/
+void access_memory(uint8_t PID, int pos);
+void print_memory();
+int64_t create_process(char* name, int mem_size);
+void add_event(int event_type, int time, int position, int PID);
+Event * get_next_event();
+void start_process(uint8_t PID);
+void kill_process(uint8_t PID);
+
 
 /* TODO: Linked list for the memory information, free and ocuppied. */
 /* TODO: . */
