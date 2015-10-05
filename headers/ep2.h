@@ -12,3 +12,4 @@ void free_pointer(void *);
 int sucessful_atoi(char *);
 int sucessful_atof(char *);
 int read_trace_file(char *);
+void reset();

@@ -25,7 +25,7 @@ int main()
     if((ret = cmd_load(cmd, arg, load))) { if(ret == 2) file_loaded = 1; }
     else if(cmd_space(cmd, arg, spc));
     else if(cmd_subst(cmd, arg, sbs));
-    else if(cmd_exec(cmd, arg, intrvl, sbs, spc, load));
+    else if((ret = cmd_exec(cmd, arg, intrvl, sbs, spc, load))) { if(ret == 2) reset(); }
     else if(cmd_exit(cmd)) break;
     else unrecognized(cmd);
 
@@ -46,6 +46,18 @@ int main()
   free(arg); arg = NULL;
   printf("Program terminated.\n");
   return 0;
+}
+
+/*Reset last loaded file for a re-run*/
+void reset()
+{
+  unsigned int i;
+  for(i = 0; i < plength; i++) {
+    process[i].lifetime = 0;
+    process[i].index = 0;
+    process[i].done = false;
+    process[i].allocated = false;
+  }
 }
 
 /*Get user command*/
@@ -347,7 +359,7 @@ int cmd_exec(char *cmd, char *arg, float *intrvl, int *sbs, int *spc, int *load)
       else
         printf("Invalid option '%s' for interval.\n", arg);
     }
-    return 1;
+    return 2;
   }
   return 0;
 }
