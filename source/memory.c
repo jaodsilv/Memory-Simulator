@@ -34,7 +34,7 @@ void *run(void *args)
 
   /*Manager thread*/
   if(thread->role == MANAGER) {
-    float t;
+    float t; unsigned int count = 0;
     /*Wait Timer thread starts the simulation*/
     while(elapsed_time == -1) continue;
     while(simulating) {
@@ -56,14 +56,19 @@ void *run(void *args)
       }
 
       /*Fetch earlier finish*/
-      for(i = 0; i < plength; i++)
-        if(process[i].finish <= t && process[i].allocated && !process[i].done)
+      for(i = 0; i < plength; i++) {
+        float elapsed = process[i].lifetime;
+        if(elapsed >= process[i].duration && process[i].allocated && !process[i].done)
           break;
+      }
 
       /*Access list safely*/
       if(i < plength) {
         sem_wait(&safe_access_list);
-        if(unfit(&process[i])) process[i].done = true;
+        if(unfit(&process[i])) {
+          process[i].done = true;
+          count++;
+        }
         sem_post(&safe_access_list);
       }
 
@@ -71,7 +76,7 @@ void *run(void *args)
       sem_wait(&safe_access_memory);
       sem_post(&safe_access_memory);
 
-      /*simulating = 0;*/
+      if(count == plength) simulating = 0;
     }
   }
 
@@ -167,8 +172,17 @@ void *run(void *args)
       clock_gettime(CLOCK_MONOTONIC, &now);
       /*t is incremented by 0.1 every 0.1s*/
       if(abs(now.tv_nsec - range.tv_nsec) > 100000000) {
+        unsigned int i;
         /*IDEA: increment a local 't' to assign time global 'elapsed_time' atomically and avoid the use of a semaphore*/
         t += 0.1; elapsed_time = t;
+        /*Update allocated processes lifetime*/
+        for(i = 0; i < plength; i++) {
+          bool allocated = process[i].allocated, done = process[i].done;
+          if(allocated && !done) {
+            float process_time_elapsed = process[i].lifetime;
+            process_time_elapsed += 0.1; process[i].lifetime = process_time_elapsed;
+          }
+        }
         /*Restart range*/
         clock_gettime(CLOCK_MONOTONIC, &range);
       }

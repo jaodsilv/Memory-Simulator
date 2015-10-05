@@ -38,13 +38,15 @@ typedef struct process {
 	unsigned int size;    /*Process' total space address*/
   unsigned int arrival; /*Time the process arrives*/
   unsigned int finish;  /*Time the process finishes*/
+	unsigned int duration;/*final - arrival*/
+	float lifetime;      /*count from 0 to duration. process lifetime*/
   /*position and time arrays together make up the pair [pn, tn] as [position[i], time[i]]*/
   unsigned int length;  /*Size of both position and time arrays*/
-  unsigned int *position;
-  unsigned int *time;
+  unsigned int *position; /*pns*/
+  unsigned int *time;   /*tns*/
+	unsigned int index;  /*index of the next [pn, tn] pair to be accessed*/
 	/*Control variables*/
 	bool done;            /*Processes finished?*/
-	/*TODO: check if this one (allocated) is the best way to implement. Can a process be allocated in more than one contiguous memory? Ex: process.pid = 3 is allocated at memories 3, 4, 5 and 10, 12, 14, 15. Is this allowed?*/
 	bool allocated;       /*Process not finished but it is allocated?*/
 } Process;
 

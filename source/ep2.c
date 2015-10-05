@@ -189,9 +189,12 @@ int read_trace_file(char *fname)
       /*Get pn*/
       if(i % 2 == 0) process[p].position[i / 2] = lists[i];
       /*Get tn*/
-      else process[p].time[i / 2] = lists[i];
+      else process[p].time[i / 2] = lists[i] - process[p].arrival;
     }
 
+    process[p].duration = process[p].finish - process[p].arrival;
+    process[p].lifetime = 0;
+    process[p].index = 0;
     process[p].done = false;
     process[p++].allocated = false;
     /*Must realloc processes array*/
@@ -204,7 +207,12 @@ int read_trace_file(char *fname)
         temporary[z].size = process[z].size;
         temporary[z].arrival = process[z].arrival;
         temporary[z].finish = process[z].finish;
+        temporary[z].duration = process[z].duration;
+        temporary[z].lifetime = process[z].lifetime;
+        temporary[z].index = process[z].index;
         temporary[z].length = process[z].length;
+        temporary[z].done = process[z].done;
+        temporary[z].allocated = process[z].allocated;
         temporary[z].position = malloc(process[z].length * sizeof(int));
         temporary[z].time = malloc(process[z].length * sizeof(int));
         for(v = 0; v < process[z].length; v++) {
@@ -228,7 +236,12 @@ int read_trace_file(char *fname)
       temporary[z].size = process[z].size;
       temporary[z].arrival = process[z].arrival;
       temporary[z].finish = process[z].finish;
+      temporary[z].duration = process[z].duration;
+      temporary[z].lifetime = process[z].lifetime;
+      temporary[z].index = process[z].index;
       temporary[z].length = process[z].length;
+      temporary[z].done = process[z].done;
+      temporary[z].allocated = process[z].allocated;
       temporary[z].position = malloc(process[z].length * sizeof(int));
       temporary[z].time = malloc(process[z].length * sizeof(int));
       for(v = 0; v < process[z].length; v++) {
@@ -242,7 +255,7 @@ int read_trace_file(char *fname)
   }
 
   /*Adds processes id.*/
-  for(i = 0; i < 256; i++) process[i].pid = pid++;
+  for(i = 0; i < plength; i++) process[i].pid = pid++;
 
   printf(" Done!\n");
   return 2;
