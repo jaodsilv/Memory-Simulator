@@ -22,7 +22,7 @@ void simulate(int spc, int sbs, float intrvl)
   /*Create memory files*/
   create_memory(PHYSICAL); create_memory(VIRTUAL);
   /*Initialize a free list*/
-  initialize_free_list(total);
+  initialize_free_list(virtual);
   /*Initialize simulator*/
   do_simulation(threads, args);
 }
