@@ -21,10 +21,24 @@ void simulate(int spc, int sbs, float intrvl)
   assign_thread_roles(args, spc, sbs, intrvl);
   /*Create memory files*/
   create_memory(PHYSICAL); create_memory(VIRTUAL);
+  /*Initialize page table*/
+  if(virtual % PAGE_SIZE == 0 && total % PAGE_SIZE == 0) initialize_page_table();
+  else {
+    printf("Error: was expecting both memory sizes to be a multiple of 16. Encountered total = %u and virtual = %u.\n", total, virtual);
+    return;
+  }
   /*Initialize a free list*/
-  initialize_free_list(virtual);
+  initialize_free_list();
   /*Initialize simulator*/
   do_simulation(threads, args);
+  printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.1fs\n\n", elapsed_time);
+}
+
+/*Initializes page table array, responsible to do the mapping*/
+void initialize_page_table()
+{
+  total_pages = virtual / PAGE_SIZE;
+  page_table = malloc(total_pages * sizeof(*page_table));
 }
 
 /*Run the simulation*/
@@ -78,6 +92,11 @@ void *run(void *args)
 
       if(count == plength) simulating = 0;
     }
+    if(head[3] != head[0] && head[3] != NULL) free(head[3]); head[3] = NULL;
+    if(head[2] != head[0] && head[2] != NULL) free(head[2]); head[2] = NULL;
+    if(head[1] != head[0] && head[1] != NULL) free(head[1]); head[1] = NULL;
+    if(head[0] != NULL) free(head[0]); head[0] = NULL;
+    free(page_table); page_table = NULL;
   }
 
   /*Printer thread*/
@@ -290,7 +309,7 @@ void do_simulation(pthread_t *threads, Thread *args)
 }
 
 /*Initiates the free list, returning the first cell.*/
-void initialize_free_list(unsigned int size)
+void initialize_free_list()
 {
   Free_List *fl;
   fl = malloc(sizeof(*fl));
@@ -298,12 +317,19 @@ void initialize_free_list(unsigned int size)
   fl->previous = NULL;
   fl->next = NULL;
   fl->base = 0;
-  fl->limit = size;
+  fl->limit = virtual;
   nf_next = fl;
   head[0] = fl;
   head[1] = head[0];
   head[2] = head[0];
   head[3] = head[0];
+}
+
+/*Get amount of pages needed*/
+unsigned int get_amount_of_pages(unsigned int size)
+{
+  unsigned int number_of_pages;
+  return (number_of_pages = (size / PAGE_SIZE) + 1);
 }
 
 /*Allocates memory for a new process in the free_list. Don't call this function!
@@ -317,7 +343,7 @@ int memory_allocation(Free_List *fl, Process *process)
   if(fl != NULL && fl->process == NULL) {
     old_limit = fl->limit;
     fl->process = process;
-    fl->limit = process->size;
+    fl->limit = PAGE_SIZE * get_amount_of_pages(process->size);
   }
   else {
     /*Bad cell selected by fetch algorithm.*/
@@ -329,7 +355,7 @@ int memory_allocation(Free_List *fl, Process *process)
 
   /*Remaining free space. There will be no remaining free space
   from the old cell if fl->limit == process->size*/
-  if(old_limit > process->size) {
+  if(old_limit > process->size && (old_limit - fl->limit > 0)) {
     new = malloc(sizeof(*new));
     new->previous = fl;
     new->process = NULL;

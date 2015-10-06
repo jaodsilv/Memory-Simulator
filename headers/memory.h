@@ -17,6 +17,7 @@
 
 /* Each PAGE has 16 bytes*/
 #define PAGE_SIZE 16 /* Page size in bytes */
+
 /* Actions types */
 #define START  0
 #define END    1
@@ -84,6 +85,8 @@ float elapsed_time;        /*Simulation time*/
 int simulating;            /*Simulation finishes when this is set to 0 by the manager thread*/
 Free_List *head[4];        /*First cell of the free list*/
 Free_List *nf_next;        /*Used by next fit algorithm to save last position*/
+unsigned int *page_table;  /*Structure to do the mapping from virtual memory to physical memory*/
+unsigned int total_pages;  /*Total number of pages*/
 
 /*Mutex*/
 sem_t safe_access_memory;  /*Mutex device to safely access memory files*/
@@ -104,7 +107,8 @@ int initialize_mutex();
 void create_memory(int type);
 void write_to_memory(int, unsigned int *, unsigned int, uint8_t);
 /*Free List manipulation prototypes*/
-void initialize_free_list(unsigned int);
+void initialize_free_list();
+void initialize_page_table();
 int memory_allocation(Free_List *, Process *);
 int fit(Process *, int);
 int unfit(Process *);
