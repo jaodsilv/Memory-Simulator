@@ -68,6 +68,14 @@ typedef struct free_list {
   struct free_list *next;       /*Next element in the list. If element = NULL, this is the last element (tail)*/
 } Free_List;
 
+typedef struct process_table {
+	Process *process;             /*Process pid*/
+	unsigned int page;            /*Index in the process table*/
+	unsigned int page_frame;      /*Frame owned by this process*/
+	/*TODO: Add whatever is needed here to manipulate page substitution*/
+} Process_Table;
+
+
 typedef struct event {
 	uint8_t pid;
 	int event_type;
@@ -85,9 +93,10 @@ float elapsed_time;        /*Simulation time*/
 int simulating;            /*Simulation finishes when this is set to 0 by the manager thread*/
 Free_List *head[4];        /*First cell of the free list*/
 Free_List *nf_next;        /*Used by next fit algorithm to save last position*/
-unsigned int *page_table;  /*Structure to do the mapping from virtual memory to physical memory*/
+Process_Table *ptable;     /*Structure to do the mapping from virtual memory to physical memory*/
 unsigned int total_pages;  /*Total number of pages*/
-
+int *virtual_bitmap;
+int *total_bitmap;
 /*Mutex*/
 sem_t safe_access_memory;  /*Mutex device to safely access memory files*/
 sem_t safe_access_list;    /*Mutex device to safely access free lists*/
@@ -108,13 +117,16 @@ void create_memory(int type);
 void write_to_memory(int, unsigned int *, unsigned int, uint8_t);
 /*Free List manipulation prototypes*/
 void initialize_free_list();
-void initialize_page_table();
+void initialize_process_table();
 int memory_allocation(Free_List *, Process *);
 int fit(Process *, int);
 int unfit(Process *);
 Free_List *fetch_ff(unsigned int);
 Free_List *fetch_nf(unsigned int);
 Free_List *fetch_qf(unsigned int);
+unsigned int get_page_number(Free_List *);
+unsigned int get_amount_of_pages(unsigned int);
+void assign_process_to_process_table(Free_List *);
 
 /*TODO: working on these functions (not exactly with this signature)*/
 void access_memory(uint8_t PID, int pos);
@@ -125,9 +137,6 @@ Event * get_next_event();
 void start_process(uint8_t PID);
 void kill_process(uint8_t PID);
 
-
-/* TODO: Linked list for the memory information, free and ocuppied. */
-/* TODO: . */
 
 
 /* Information about process and events */

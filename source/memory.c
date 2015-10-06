@@ -19,14 +19,14 @@ void simulate(int spc, int sbs, float intrvl)
   if(!initialize_mutex()) return;
   /*Assign roles to threads*/
   assign_thread_roles(args, spc, sbs, intrvl);
-  /*Create memory files*/
-  create_memory(PHYSICAL); create_memory(VIRTUAL);
   /*Initialize page table*/
-  if(virtual % PAGE_SIZE == 0 && total % PAGE_SIZE == 0) initialize_page_table();
+  if(virtual % PAGE_SIZE == 0 && total % PAGE_SIZE == 0) initialize_process_table();
   else {
     printf("Error: was expecting both memory sizes to be a multiple of 16. Encountered total = %u and virtual = %u.\n", total, virtual);
     return;
   }
+  /*Create memory files*/
+  create_memory(PHYSICAL); create_memory(VIRTUAL);
   /*Initialize a free list*/
   initialize_free_list();
   /*Initialize simulator*/
@@ -35,10 +35,10 @@ void simulate(int spc, int sbs, float intrvl)
 }
 
 /*Initializes page table array, responsible to do the mapping*/
-void initialize_page_table()
+void initialize_process_table()
 {
   total_pages = virtual / PAGE_SIZE;
-  page_table = malloc(total_pages * sizeof(*page_table));
+  ptable = malloc(total_pages * sizeof(*ptable));
 }
 
 /*Run the simulation*/
@@ -59,20 +59,50 @@ void *run(void *args)
 
       /*Fetch arrivals*/
       for(i = 0; i < plength; i++)
-        if(process[i].arrival <= t && !process[i].allocated && !process[i].done)
+        if(process[i].arrival <= t && !process[i].allocated)
           break;
 
       /*Access list safely*/
       if(i < plength) {
         sem_wait(&safe_access_list);
-        if(fit(&process[i], thread->spc)) process[i].allocated = true;
+        if(fit(&process[i], thread->spc)) {
+          Free_List *p;
+          unsigned int *positions, npos, j;
+          process[i].allocated = true;
+
+          /*Must write in the virtual binary file*/
+          p = head[j = 0]; while(p != NULL && j < 4) {
+            if(process[i].pid == p->process->pid) {
+              unsigned int k;
+              positions = malloc((npos = p->limit) * sizeof(*positions));
+              for(k = p->base; k < p->base + p->limit; k++) positions[k - p->base] = k;
+              break;
+            }
+            if(p->next == NULL && j < 4) { p = head[++j]; continue; }
+            p = p->next;
+          }
+          /*Access memory safely*/
+          sem_wait(&safe_access_memory);
+          /*Write pid in virtual file*/
+          write_to_memory(VIRTUAL, positions, npos, process[i].pid);
+          /*Assign to process table*/
+          assign_process_to_process_table(p);
+          sem_post(&safe_access_memory);
+          free(positions); positions = NULL;
+        }
         sem_post(&safe_access_list);
       }
+
+      /*Access memory safely*/
+      sem_wait(&safe_access_memory);
+      /*TODO: check if there is an available page frame and assign a page using the process table to it (= write pid in the right positions)*/
+
+      sem_post(&safe_access_memory);
 
       /*Fetch earlier finish*/
       for(i = 0; i < plength; i++) {
         float elapsed = process[i].lifetime;
-        if(elapsed >= process[i].duration && process[i].allocated && !process[i].done)
+        if(elapsed >= process[i].duration && process[i].allocated && process[i].index == process[i].length)
           break;
       }
 
@@ -86,17 +116,15 @@ void *run(void *args)
         sem_post(&safe_access_list);
       }
 
-      /*Access memory safely*/
-      sem_wait(&safe_access_memory);
-      sem_post(&safe_access_memory);
-
       if(count == plength) simulating = 0;
     }
     if(head[3] != head[0] && head[3] != NULL) free(head[3]); head[3] = NULL;
     if(head[2] != head[0] && head[2] != NULL) free(head[2]); head[2] = NULL;
     if(head[1] != head[0] && head[1] != NULL) free(head[1]); head[1] = NULL;
     if(head[0] != NULL) free(head[0]); head[0] = NULL;
-    free(page_table); page_table = NULL;
+    free(ptable); ptable = NULL;
+    free(total_bitmap); total_bitmap = NULL;
+    free(virtual_bitmap); virtual_bitmap = NULL;
   }
 
   /*Printer thread*/
@@ -130,7 +158,7 @@ void *run(void *args)
               else printf("[free, %u, %u]", p->base, p->limit);
               if(p->next != NULL) printf(" -> ");
             }
-            if(p->next == NULL && i < 4) { i++; continue; }
+            if(p->next == NULL && i < 4) { p = head[++i]; continue; }
             p = p->next;
           }
           printf("\n");
@@ -148,28 +176,36 @@ void *run(void *args)
           /*Read physical binary file*/
           mfile = fopen("/tmp/ep2.mem", "rb");
           mfile_u = fopen("/tmp/ep2.mem", "rb");
-          fread(physical_array, sizeof(int8_t), (size_t)total, mfile);
-          fread(physical_array_u, sizeof(uint8_t), (size_t)total, mfile_u);
-
           /*Prints physical memory file*/
           for(i = 0; i < total; i++) {
-            if(physical_array[i] < 0) printf("-1 ");
-            else printf("%u ", physical_array_u[i]);
+            fread(&physical_array[i], sizeof(physical_array[i]), 1, mfile);
+            fread(&physical_array_u[i], sizeof(physical_array_u[i]), 1, mfile_u);
+            if(total_bitmap[i] == -1) {
+              printf("%d ", physical_array[i]);
+              continue;
+            }
+            else {
+              printf("%u ", physical_array_u[i]);
+            }
           } printf("\n");
-          fclose(mfile); fclose(mfile_u);
 
           printf("Virtual memory state (binary file):\n");
           /*Read virtual binary file*/
           mfile = fopen("/tmp/ep2.vir", "rb");
           mfile_u = fopen("/tmp/ep2.vir", "rb");
-          fread(virtual_array, sizeof(int8_t), (size_t)virtual, mfile);
-          fread(virtual_array_u, sizeof(uint8_t), (size_t)virtual, mfile_u);
-
-          /*Prints physical memory file*/
+          /*Prints virtual memory file*/
           for(i = 0; i < virtual; i++) {
-            if(virtual_array[i] < 0) printf("-1 ");
-            else printf("%u ", virtual_array_u[i]);
+            fread(&virtual_array[i], sizeof(virtual_array[i]), 1, mfile);
+            fread(&virtual_array_u[i], sizeof(virtual_array_u[i]), 1, mfile_u);
+            if(virtual_bitmap[i] == -1) {
+              printf("%d ", virtual_array[i]);
+              continue;
+            }
+            else {
+              printf("%u ", virtual_array_u[i]);
+            }
           } printf("\n");
+
           fclose(mfile); fclose(mfile_u);
           sem_post(&safe_access_memory);
         }
@@ -212,56 +248,82 @@ void *run(void *args)
 
 /*Write to the binary file in the selected positions 'npos' (in the '*positions' array)
 the process 'pid' to register he is using these positions.*/
-/*TODO: Still have to test but might be working as it is similar to create_memory and printer thread*/
 void write_to_memory(int type, unsigned int *positions, unsigned int npos, uint8_t pid)
 {
   FILE *mfile, *mfile_u;
-  int8_t *n;
-  uint8_t *n_u;
+  int8_t *array;
+  uint8_t *array_u;
 
   switch (type) {
     unsigned int i, j;
     case PHYSICAL:
-      n = malloc(total * sizeof(*n));
-      n_u = malloc(total * sizeof(*n_u));
+      array = malloc(total * sizeof(*array));
+      array_u = malloc(total * sizeof(*array_u));
 
-      /*Read file contents*/
+      /*Get contents of binary file*/
       mfile = fopen("/tmp/ep2.mem", "rb");
       mfile_u = fopen("/tmp/ep2.mem", "rb");
-      fread(n, sizeof(int8_t), (size_t)total, mfile);
-      fread(n_u, sizeof(uint8_t), (size_t)total, mfile_u);
+      fread(array, sizeof(array[i]), total, mfile);
+      fread(array_u, sizeof(array_u[i]), total, mfile_u);
+      fclose(mfile); fclose(mfile_u);
 
-      /*Process identified by 'pid' is claiming to register new positions*/
-      for(i = 0, j = 0; i < total && j < npos; i++) {
-        if(n[i] < 0 && i == positions[j]) { n_u[i] = pid; j++; }
-        else if(i == positions[j]) { n_u[i] = pid; j++; }
+      /*Modify array of unsigneds*/
+      for(i = 0, j = 0; i < total && j < npos; i++)
+        if(i == positions[j]) {
+          array_u[i] = pid; j++;
+          if(total_bitmap[i] == -1) total_bitmap[i] = 1;
+        }
+
+      /*Open file in writing mode*/
+      mfile = fopen("/tmp/ep2.mem", "wb");
+      mfile_u = fopen("/tmp/ep2.mem", "wb");
+
+      /*Modify file*/
+      for(i = 0; i < virtual; i++) {
+        if(total_bitmap[i] == -1) {
+          fwrite(&array[i], sizeof(array[i]), 1, mfile_u);
+        }
+        else {
+          fwrite(&array_u[i], sizeof(array_u[i]), 1, mfile_u);
+        }
       }
-
-      /*Write claimed positions*/
-      fwrite(n_u, sizeof(uint8_t), (size_t)total, mfile_u);
+      fclose(mfile); fclose(mfile_u);
       break;
     case VIRTUAL:
-      n = malloc(virtual * sizeof(*n));
-      n_u = malloc(virtual * sizeof(*n_u));
+      array = malloc(virtual * sizeof(*array));
+      array_u = malloc(virtual * sizeof(*array_u));
 
-      /*Read file contents*/
+      /*Get contents of binary file*/
       mfile = fopen("/tmp/ep2.vir", "rb");
       mfile_u = fopen("/tmp/ep2.vir", "rb");
-      fread(n, sizeof(int8_t), (size_t)virtual, mfile);
-      fread(n_u, sizeof(uint8_t), (size_t)virtual, mfile_u);
+      fread(array, sizeof(array[i]), virtual, mfile);
+      fread(array_u, sizeof(array_u[i]), virtual, mfile_u);
+      fclose(mfile); fclose(mfile_u);
 
-      /*Process identified by 'pid' is claiming to register new positions*/
-      for(i = 0, j = 0; i < virtual && j < npos; i++) {
-        if(n[i] < 0 && i == positions[j]) { n_u[i] = pid; j++; }
-        else if(i == positions[j]) { n_u[i] = pid; j++; }
+      /*Modify array of unsigneds*/
+      for(i = 0, j = 0; i < virtual && j < npos; i++)
+        if(i == positions[j]) {
+          array_u[i] = pid; j++;
+          if(virtual_bitmap[i] == -1) virtual_bitmap[i] = 1;
+        }
+
+      /*Open file in writing mode*/
+      mfile = fopen("/tmp/ep2.vir", "wb");
+      mfile_u = fopen("/tmp/ep2.vir", "wb");
+
+      /*Modify file*/
+      for(i = 0; i < virtual; i++) {
+        if(virtual_bitmap[i] == -1) {
+          fwrite(&array[i], sizeof(array[i]), 1, mfile_u);
+        }
+        else {
+          fwrite(&array_u[i], sizeof(array_u[i]), 1, mfile_u);
+        }
       }
-
-      /*Write claimed positions*/
-      fwrite(n_u, sizeof(uint8_t), (size_t)virtual, mfile_u);
+      fclose(mfile); fclose(mfile_u);
       break;
   }
-  fclose(mfile); fclose(mfile_u);
-  free(n); n = NULL; free(n_u); n_u = NULL;
+  free(array); array = NULL; free(array_u); array_u = NULL;
 }
 
 /*Write binary files to represent a memory*/
@@ -277,6 +339,8 @@ void create_memory(int type)
       for(i = 0; i < total; i++) n1[i] = -1;
       mfile = fopen("/tmp/ep2.mem", "wb");
       fwrite(n1, sizeof(n1[0]), total * sizeof(n1[0]), mfile);
+      total_bitmap = malloc(total * sizeof(*total_bitmap));
+      for(i = 0; i < total; i++) total_bitmap[i] = -1;
       free(n1); n1 = NULL;
       break;
     case VIRTUAL:
@@ -284,6 +348,8 @@ void create_memory(int type)
       for(i = 0; i < virtual; i++) n2[i] = -1;
       mfile = fopen("/tmp/ep2.vir", "wb");
       fwrite(n2, sizeof(n2[0]), virtual * sizeof(n2[0]), mfile);
+      virtual_bitmap = malloc(virtual * sizeof(*virtual_bitmap));
+      for(i = 0; i < virtual; i++) virtual_bitmap[i] = -1;
       free(n2); n2 = NULL;
       break;
   }
@@ -325,11 +391,33 @@ void initialize_free_list()
   head[3] = head[0];
 }
 
+/*Add process to process table*/
+void assign_process_to_process_table(Free_List *fl)
+{
+  unsigned int i, process_table_index, number_of_pages;
+
+  process_table_index = get_page_number(fl);
+  number_of_pages = get_amount_of_pages(fl->process->size);
+
+  for(i = 0; i < number_of_pages; i++) {
+    ptable[process_table_index].process = fl->process;
+    ptable[process_table_index].page = process_table_index;
+    process_table_index++;
+  }
+}
+
 /*Get amount of pages needed*/
 unsigned int get_amount_of_pages(unsigned int size)
 {
   unsigned int number_of_pages;
   return (number_of_pages = (size / PAGE_SIZE) + 1);
+}
+
+/*Get the page number. The page number is the index in the page table for the process allocated with base fl->base.*/
+unsigned int get_page_number(Free_List *fl)
+{
+  unsigned int page_number;
+  return (page_number = fl->base / PAGE_SIZE);
 }
 
 /*Allocates memory for a new process in the free_list. Don't call this function!
