@@ -25,7 +25,7 @@ int main()
     if((ret = cmd_load(cmd, arg, load))) { if(ret == 2) file_loaded = 1; }
     else if(cmd_space(cmd, arg, spc));
     else if(cmd_subst(cmd, arg, sbs));
-    else if((ret = cmd_exec(cmd, arg, intrvl, sbs, spc, load))) { if(ret == 2) reset(); }
+    else if(cmd_exec(cmd, arg, intrvl, sbs, spc, load));
     else if(cmd_exit(cmd)) break;
     else unrecognized(cmd);
 
@@ -355,11 +355,14 @@ int cmd_exec(char *cmd, char *arg, float *intrvl, int *sbs, int *spc, int *load)
 
         /*Do memory simulation*/
         simulate(*spc, *sbs, *intrvl);
+
+        /*Reset control variables*/
+        reset();
       }
       else
         printf("Invalid option '%s' for interval.\n", arg);
     }
-    return 2;
+    return 1;
   }
   return 0;
 }

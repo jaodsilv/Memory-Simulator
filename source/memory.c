@@ -334,6 +334,7 @@ int memory_allocation(Free_List *fl, Process *process)
     new->previous = fl;
     new->process = NULL;
     new->next = fl->next;
+    if(fl->next != NULL) fl->next->previous = new;
     fl->next = new;
     new->base = fl->base + fl->limit;
     new->limit = old_limit - fl->limit;
@@ -374,7 +375,7 @@ int unfit(Process *process)
       p->process = NULL;
     /*Case: free | process P | free*/
     else if(p->previous->process == NULL && p->next->process == NULL) {
-      Free_List *kill;
+      Free_List *k;
       if(p->previous == head[0]) {
         if(head[0] == head[3]) head[3] = p;
         if(head[0] == head[2]) head[2] = p;
@@ -388,14 +389,14 @@ int unfit(Process *process)
 
       p->base = p->previous->base;
       p->limit += (p->previous->limit + p->next->limit);
-      kill = p->previous;
-      p->previous = kill->previous;
-      if(kill->previous != NULL) kill->previous->next = p;
-      free(kill); kill = p->next;
-      p->next = kill->next;
-      if(kill->next != NULL) kill->next->previous = p;
-      free(kill); kill = NULL;
       p->process = NULL;
+      if(p->previous->previous != NULL) p->previous->previous->next = p;
+      if(p->next->next != NULL) p->next->next->previous = p;
+      k = p->next;
+      p->next = p->next->next;
+      free(k); k = p->previous;
+      p->previous = p->previous->previous;
+      free(k); k = NULL;
     }
     /*Case: process X | process P | free*/
     else if(p->previous->process != NULL && p->next->process == NULL) {
