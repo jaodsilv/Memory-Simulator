@@ -139,15 +139,8 @@ void *run(void *args)
 
   /*Printer thread*/
   if(thread->role == PRINTER) {
-    FILE *mfile, *mfile_u;
     float last = 0, t = 0, ret;
-    int8_t *physical_array, *virtual_array;
-    uint8_t *physical_array_u, *virtual_array_u;
 
-    physical_array = malloc(total * sizeof(*physical_array));
-    virtual_array = malloc(virtual * sizeof(*virtual_array));
-    physical_array_u = malloc(total * sizeof(*physical_array_u));
-    virtual_array_u = malloc(virtual * sizeof(*virtual_array_u));
     /*Wait Timer thread starts the simulation*/
     while(elapsed_time == -1) continue;
     while(simulating) {
@@ -155,76 +148,9 @@ void *run(void *args)
       ret = elapsed_time;
       if(last != ret) {
         last = ret; t += 0.1;
-        if(t >= thread->intrvl) {
-          Free_List *p;
-          unsigned int i; t = 0;
-
-          printf("\nTIME: %.1fs\n", last);
-          sem_wait(&safe_access_list);
-          printf("Free List state [process name (pid),  base, limit]:\n");
-          p = head[i = 0]; while(p != NULL && i < 4) {
-            if(i == 0 || (i > 0 && head[i] != head[0])) {
-              if(p->process != NULL) printf("[%s (%u), %u, %u]", p->process->name, p->process->pid, p->base, p->limit);
-              else printf("[free, %u, %u]", p->base, p->limit);
-              if(p->next != NULL) printf(" -> ");
-            }
-            if(p->next == NULL && i < 4) { p = head[++i]; continue; }
-            p = p->next;
-          }
-          printf("\n");
-          sem_post(&safe_access_list);
-
-          /*IDEA: In order to operate considering the initial -1 value, we need to have
-          both signed and unsigned integers of size 1b (as the enunciation of the EP commanded),
-          this because unsigned goes from [0, 255] and -1 is out of the interval. Thus,
-          we need another file pointer as well. Whenever there is a -1 in a position of the
-          file, we use the signed values and file pointer to print it, otherwise, we use the
-          unsigned ones*/
-
-          sem_wait(&safe_access_memory);
-          printf("Physical memory state (binary file):\n");
-          /*Read physical binary file*/
-          mfile = fopen("/tmp/ep2.mem", "rb");
-          mfile_u = fopen("/tmp/ep2.mem", "rb");
-          /*Prints physical memory file*/
-          for(i = 0; i < total; i++) {
-            fread(&physical_array[i], sizeof(physical_array[i]), 1, mfile);
-            fread(&physical_array_u[i], sizeof(physical_array_u[i]), 1, mfile_u);
-            if(total_bitmap[i] == -1) {
-              printf("%d ", physical_array[i]);
-              continue;
-            }
-            else {
-              printf("%u ", physical_array_u[i]);
-            }
-          } printf("\n");
-
-          printf("Virtual memory state (binary file):\n");
-          /*Read virtual binary file*/
-          mfile = fopen("/tmp/ep2.vir", "rb");
-          mfile_u = fopen("/tmp/ep2.vir", "rb");
-          /*Prints virtual memory file*/
-          for(i = 0; i < virtual; i++) {
-            fread(&virtual_array[i], sizeof(virtual_array[i]), 1, mfile);
-            fread(&virtual_array_u[i], sizeof(virtual_array_u[i]), 1, mfile_u);
-            if(virtual_bitmap[i] == -1) {
-              printf("%d ", virtual_array[i]);
-              continue;
-            }
-            else {
-              printf("%u ", virtual_array_u[i]);
-            }
-          } printf("\n");
-
-          fclose(mfile); fclose(mfile_u);
-          sem_post(&safe_access_memory);
-        }
+        if(t >= thread->intrvl) { t = 0; print_memory(last); }
       }
     }
-    free(physical_array); physical_array = NULL;
-    free(virtual_array); virtual_array = NULL;
-    free(physical_array_u); physical_array_u = NULL;
-    free(virtual_array_u); virtual_array_u = NULL;
   }
 
   /*Timer thread*/
@@ -888,4 +814,86 @@ int initialize_mutex()
     return 0;
   }
   return 1;
+}
+
+
+/*Print memory and linked list. This is basically everything the printer thread does*/
+void print_memory(float last)
+{
+  Free_List *p;
+  unsigned int i;
+  FILE *mfile, *mfile_u;
+  int8_t *physical_array, *virtual_array;
+  uint8_t *physical_array_u, *virtual_array_u;
+
+
+  physical_array = malloc(total * sizeof(*physical_array));
+  virtual_array = malloc(virtual * sizeof(*virtual_array));
+  physical_array_u = malloc(total * sizeof(*physical_array_u));
+  virtual_array_u = malloc(virtual * sizeof(*virtual_array_u));
+
+  printf("\nTIME: %.1fs\n", last);
+  sem_wait(&safe_access_list);
+  printf("Free List state [process name (pid),  base, limit]:\n");
+  p = head[i = 0]; while(p != NULL && i < 4) {
+    if(i == 0 || (i > 0 && head[i] != head[0])) {
+      if(p->process != NULL) printf("[%s (%u), %u, %u]", p->process->name, p->process->pid, p->base, p->limit);
+      else printf("[free, %u, %u]", p->base, p->limit);
+      if(p->next != NULL) printf(" -> ");
+    }
+    if(p->next == NULL && i < 4) { p = head[++i]; continue; }
+    p = p->next;
+  }
+  printf("\n");
+  sem_post(&safe_access_list);
+
+  /*IDEA: In order to operate considering the initial -1 value, we need to have
+  both signed and unsigned integers of size 1b (as the enunciation of the EP commanded),
+  this because unsigned goes from [0, 255] and -1 is out of the interval. Thus,
+  we need another file pointer as well. Whenever there is a -1 in a position of the
+  file, we use the signed values and file pointer to print it, otherwise, we use the
+  unsigned ones*/
+
+  sem_wait(&safe_access_memory);
+  printf("Physical memory state (binary file):\n");
+  /*Read physical binary file*/
+  mfile = fopen("/tmp/ep2.mem", "rb");
+  mfile_u = fopen("/tmp/ep2.mem", "rb");
+  /*Prints physical memory file*/
+  for(i = 0; i < total; i++) {
+    fread(&physical_array[i], sizeof(physical_array[i]), 1, mfile);
+    fread(&physical_array_u[i], sizeof(physical_array_u[i]), 1, mfile_u);
+    if(total_bitmap[i] == -1) {
+      printf("%d ", physical_array[i]);
+      continue;
+    }
+    else {
+      printf("%u ", physical_array_u[i]);
+    }
+  } printf("\n");
+
+  printf("Virtual memory state (binary file):\n");
+  /*Read virtual binary file*/
+  mfile = fopen("/tmp/ep2.vir", "rb");
+  mfile_u = fopen("/tmp/ep2.vir", "rb");
+  /*Prints virtual memory file*/
+  for(i = 0; i < virtual; i++) {
+    fread(&virtual_array[i], sizeof(virtual_array[i]), 1, mfile);
+    fread(&virtual_array_u[i], sizeof(virtual_array_u[i]), 1, mfile_u);
+    if(virtual_bitmap[i] == -1) {
+      printf("%d ", virtual_array[i]);
+      continue;
+    }
+    else {
+      printf("%u ", virtual_array_u[i]);
+    }
+  } printf("\n");
+
+  fclose(mfile); fclose(mfile_u);
+  sem_post(&safe_access_memory);
+
+  free(physical_array); physical_array = NULL;
+  free(virtual_array); virtual_array = NULL;
+  free(physical_array_u); physical_array_u = NULL;
+  free(virtual_array_u); virtual_array_u = NULL;
 }

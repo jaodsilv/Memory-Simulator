@@ -110,8 +110,9 @@ void *run(void *);
 int initialize_mutex();
 void free_heads();
 /*Memory files manipulation prototypes*/
-void create_memory(int type);
+void create_memory(int);
 void write_to_memory(int, unsigned int *, unsigned int, uint8_t);
+void print_memory(float);
 /*Free List manipulation prototypes*/
 void initialize_free_list();
 int memory_allocation(Free_List *, Process *);
