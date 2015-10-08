@@ -131,10 +131,7 @@ void *run(void *args)
 
       if(count == plength) simulating = 0;
     }
-    if(head[3] != head[0] && head[3] != NULL) free(head[3]); head[3] = NULL;
-    if(head[2] != head[0] && head[2] != NULL) free(head[2]); head[2] = NULL;
-    if(head[1] != head[0] && head[1] != NULL) free(head[1]); head[1] = NULL;
-    if(head[0] != NULL) free(head[0]); head[0] = NULL;
+    free_heads();
     free(page_table); page_table = NULL;
     free(total_bitmap); total_bitmap = NULL;
     free(virtual_bitmap); virtual_bitmap = NULL;
@@ -254,6 +251,15 @@ void *run(void *args)
   return NULL;
 }
 
+/*Free head(s)*/
+void free_heads()
+{
+  if(head[3] != head[0] && head[3] != NULL) free(head[3]); head[3] = NULL;
+  if(head[2] != head[0] && head[2] != NULL) free(head[2]); head[2] = NULL;
+  if(head[1] != head[0] && head[1] != NULL) free(head[1]); head[1] = NULL;
+  if(head[0] != NULL) free(head[0]); head[0] = NULL;
+}
+
 /*Not Recently Used Page*/
 void nrup(unsigned int page, unsigned int *loaded_pages, unsigned int size)
 {
@@ -335,10 +341,13 @@ void do_page_substitution(unsigned int page, int substitution_number)
         nrup(page, loaded_pages, size);
       break;
     case FIFO:
+      /*TODO: FIFO*/
       break;
     case SCP:
+      /*TODO: SCP*/
       break;
     case LRUP:
+      /*TODO: LRUP*/
       break;
   }
 
@@ -364,7 +373,16 @@ void do_paging(int substitution_number)
         }
         /*Seeks for the content in the page frame*/
         else {
-          /*unsigned int wanted_position = (page_table[i].process)->position[(page_table[i].process)->index];*/
+          unsigned int positions[1];
+          unsigned int wanted_position = (page_table[i].process)->position[(page_table[i].process)->index];
+
+          /*Compute the position in the physical memory (map from virtual to physical)*/
+          positions[0] = (page_table[i].page_frame * PAGE_SIZE) + wanted_position;
+          /*Access the wanted positions*/
+          sem_wait(&safe_access_memory);
+          write_to_memory(PHYSICAL, positions, 1, (page_table[i].process)->pid);
+          sem_post(&safe_access_memory);
+
           /*IDEA: Decide if the action is write or read using a rand call. If write, modified = true, else, modified = false*/
           page_table[i].modified = true;
           page_table[i].referenced = true;
@@ -433,7 +451,6 @@ void register_allocation(Process *process)
   sem_post(&safe_access_memory);
   free(positions); positions = NULL;
 }
-
 
 /*Write to the binary file in the selected positions 'npos' (in the '*positions' array)
 the process 'pid' to register he is using these positions.*/
