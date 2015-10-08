@@ -84,7 +84,7 @@ void *run(void *args)
       /*Fetch earlier finish*/
       for(i = 0; i < plength; i++) {
         float elapsed = process[i].lifetime;
-        if(elapsed >= process[i].duration && process[i].allocated && process[i].index == process[i].length)
+        if(elapsed >= process[i].duration && process[i].allocated && process[i].index == process[i].length && !process[i].done)
           break;
       }
 
@@ -92,6 +92,10 @@ void *run(void *args)
       if(i < plength) {
         sem_wait(&safe_access_list);
         if(unfit(&process[i])) {
+          unsigned int j;
+          for(j = 0; j < total_pages; j++)
+            if(page_table[j].process == &process[i])
+              page_table[j].present = false;
           process[i].done = true;
           count++;
         }
@@ -338,7 +342,8 @@ void do_paging(int substitution_number)
           page_table[i].modified = true;
           page_table[i].referenced = true;
           /*Next action*/
-          /*(page_table[i].process)->index += 1;*/
+          if((page_table[i].process)->index < (page_table[i].process)->length)
+            (page_table[i].process)->index += 1;
           page_table[i].time = 0;
         }
       }
@@ -402,6 +407,7 @@ void register_allocation(Process *process)
   free(positions); positions = NULL;
 }
 
+
 /*Write to the binary file in the selected positions 'npos' (in the '*positions' array)
 the process 'pid' to register he is using these positions.*/
 void write_to_memory(int type, unsigned int *positions, unsigned int npos, uint8_t pid)
@@ -435,7 +441,7 @@ void write_to_memory(int type, unsigned int *positions, unsigned int npos, uint8
       mfile_u = fopen("/tmp/ep2.mem", "wb");
 
       /*Modify file*/
-      for(i = 0; i < virtual; i++) {
+      for(i = 0; i < total; i++) {
         if(total_bitmap[i] == -1) {
           fwrite(&array[i], sizeof(array[i]), (size_t)1, mfile_u);
         }
@@ -629,7 +635,7 @@ int unfit(Process *process)
 
   /*Fetch process*/
   if(head[0] == head[1] && head[0] == head[2] && head[0] == head[3])
-    for(p = head[0]; p->process != process && p != NULL; p = p->next) continue;
+    for(p = head[0]; p != NULL && p->process != process; p = p->next) continue;
   else {
     if(process->size > 256) for(p = head[3]; p->process != process && p != NULL; p = p->next) continue;
     if(process->size > 64)  for(p = head[2]; p->process != process && p != NULL; p = p->next) continue;
