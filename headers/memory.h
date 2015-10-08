@@ -34,18 +34,18 @@
 
 /*Structures*/
 typedef struct process {
-	uint8_t pid;          /*64 bit PID*/
-	char name[64];        /*Process name*/
-	unsigned int size;    /*Process' total space address*/
-  unsigned int arrival; /*Time the process arrives*/
-  unsigned int finish;  /*Time the process finishes*/
-	unsigned int duration;/*final - arrival*/
-	float lifetime;      /*count from 0 to duration. process lifetime*/
+	uint8_t pid;            /*64 bit PID*/
+	char name[64];          /*Process name*/
+	unsigned int size;      /*Process' total space address*/
+  unsigned int arrival;   /*Time the process arrives*/
+  unsigned int finish;    /*Time the process finishes*/
+	unsigned int duration;  /*final - arrival*/
+	float lifetime;         /*count from 0 to duration. process lifetime*/
   /*position and time arrays together make up the pair [pn, tn] as [position[i], time[i]]*/
-  unsigned int length;  /*Size of both position and time arrays*/
+  unsigned int length;    /*Size of both position and time arrays*/
   unsigned int *position; /*pns*/
-  unsigned int *time;   /*tns*/
-	unsigned int index;  /*index of the next [pn, tn] pair to be accessed*/
+  unsigned int *time;     /*tns*/
+	unsigned int index;     /*index of the next [pn, tn] pair to be accessed*/
 	/*Control variables*/
 	bool done;            /*Processes finished?*/
 	bool allocated;       /*Process not finished but it is allocated?*/
@@ -68,21 +68,16 @@ typedef struct free_list {
   struct free_list *next;       /*Next element in the list. If element = NULL, this is the last element (tail)*/
 } Free_List;
 
-typedef struct process_table {
-	Process *process;             /*Process pid*/
+typedef struct page_table {
+	Process *process;             /*Process*/
 	unsigned int page;            /*Index in the process table*/
-	unsigned int page_frame;      /*Frame owned by this process*/
-	/*TODO: Add whatever is needed here to manipulate page substitution*/
-} Process_Table;
-
-
-typedef struct event {
-	uint8_t pid;
-	int event_type;
-	int time;
-	int position;
-	struct event *next;
-} Event;
+	unsigned int *page_frame;     /*Frame owned by this process*/
+	float time;                   /*Time the process is allocated*/
+	float loaded_time;            /*Register the time this page was loaded into a page frame*/
+	bool present;                 /*Present bit*/
+	bool referenced;              /*Referenced bit*/
+	bool modified;                /*Modified bit. We are considering every access to be a writing action*/
+} Page_Table;
 
 /*Globals*/
 unsigned int total;        /*Total physical memory*/
@@ -93,17 +88,13 @@ float elapsed_time;        /*Simulation time*/
 int simulating;            /*Simulation finishes when this is set to 0 by the manager thread*/
 Free_List *head[4];        /*First cell of the free list*/
 Free_List *nf_next;        /*Used by next fit algorithm to save last position*/
-Process_Table *ptable;     /*Structure to do the mapping from virtual memory to physical memory*/
+Page_Table *page_table;    /*Structure to do the mapping from virtual memory to physical memory*/
 unsigned int total_pages;  /*Total number of pages*/
 int *virtual_bitmap;
 int *total_bitmap;
 /*Mutex*/
 sem_t safe_access_memory;  /*Mutex device to safely access memory files*/
 sem_t safe_access_list;    /*Mutex device to safely access free lists*/
-
-/* Each subelement of memory strct has 64 bits, so it is 8 bytes
-Each element of memory is a page */
-typedef int64_t *(memory[PAGE_SIZE/8]);
 
 /*Prototypes*/
 /*Simulator setup & initialization prototypes*/
@@ -117,7 +108,7 @@ void create_memory(int type);
 void write_to_memory(int, unsigned int *, unsigned int, uint8_t);
 /*Free List manipulation prototypes*/
 void initialize_free_list();
-void initialize_process_table();
+void initialize_page_table();
 int memory_allocation(Free_List *, Process *);
 int fit(Process *, int);
 int unfit(Process *);
@@ -126,14 +117,16 @@ Free_List *fetch_nf(unsigned int);
 Free_List *fetch_qf(unsigned int);
 unsigned int get_page_number(Free_List *);
 unsigned int get_amount_of_pages(unsigned int);
-void assign_process_to_process_table(Free_List *);
+void assign_process_to_page_table(Free_List *);
+void update_allocated_processes();
+void update_page_table_times();
+void register_allocation(Process *);
+void do_page_substitution(unsigned int, int);
+void nrup(unsigned int, unsigned int **, unsigned int);
 
 /*TODO: working on these functions (not exactly with this signature)*/
 void access_memory(uint8_t PID, int pos);
-void print_memory();
 int64_t create_process(char* name, int mem_size);
-void add_event(int event_type, int time, int position, int PID);
-Event * get_next_event();
 void start_process(uint8_t PID);
 void kill_process(uint8_t PID);
 

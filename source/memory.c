@@ -20,7 +20,7 @@ void simulate(int spc, int sbs, float intrvl)
   /*Assign roles to threads*/
   assign_thread_roles(args, spc, sbs, intrvl);
   /*Initialize page table*/
-  if(virtual % PAGE_SIZE == 0 && total % PAGE_SIZE == 0) initialize_process_table();
+  if(virtual % PAGE_SIZE == 0 && total % PAGE_SIZE == 0) initialize_page_table();
   else {
     printf("Error: was expecting both memory sizes to be a multiple of 16. Encountered total = %u and virtual = %u.\n", total, virtual);
     return;
@@ -35,10 +35,15 @@ void simulate(int spc, int sbs, float intrvl)
 }
 
 /*Initializes page table array, responsible to do the mapping*/
-void initialize_process_table()
+void initialize_page_table()
 {
+  unsigned int i;
   total_pages = virtual / PAGE_SIZE;
-  ptable = malloc(total_pages * sizeof(*ptable));
+  page_table = malloc(total_pages * sizeof(*page_table));
+  for(i = 0; i < total_pages; i++) {
+    page_table[i].process = NULL;
+    page_table[i].present = false;
+  }
 }
 
 /*Run the simulation*/
@@ -65,39 +70,43 @@ void *run(void *args)
       /*Access list safely*/
       if(i < plength) {
         sem_wait(&safe_access_list);
-        if(fit(&process[i], thread->spc)) {
-          Free_List *p;
-          unsigned int *positions, npos, j;
-          process[i].allocated = true;
-
-          /*Must write in the virtual binary file*/
-          p = head[j = 0]; while(p != NULL && j < 4) {
-            if(process[i].pid == p->process->pid) {
-              unsigned int k;
-              positions = malloc((npos = p->limit) * sizeof(*positions));
-              for(k = p->base; k < p->base + p->limit; k++) positions[k - p->base] = k;
-              break;
-            }
-            if(p->next == NULL && j < 4) { p = head[++j]; continue; }
-            p = p->next;
-          }
-          /*Access memory safely*/
-          sem_wait(&safe_access_memory);
-          /*Write pid in virtual file*/
-          write_to_memory(VIRTUAL, positions, npos, process[i].pid);
-          /*Assign to process table*/
-          assign_process_to_process_table(p);
-          sem_post(&safe_access_memory);
-          free(positions); positions = NULL;
-        }
+        if(fit(&process[i], thread->spc)) register_allocation(&process[i]);
+        /*TODO: else compact_memory*/
         sem_post(&safe_access_list);
       }
 
       /*Access memory safely*/
-      sem_wait(&safe_access_memory);
+      /*sem_wait(&safe_access_memory);*/
       /*TODO: check if there is an available page frame and assign a page using the process table to it (= write pid in the right positions)*/
-
-      sem_post(&safe_access_memory);
+      for(i = 0; i < total_pages; i++) {
+        if(page_table[i].process == NULL) continue;
+        else {
+          float page_time = page_table[i].time;
+          unsigned int access_time = (page_table[i].process)->time[(page_table[i].process)->index];
+          float process_elapsed_time = (page_table[i].process)->lifetime;
+          /*Check if the process wants to acess a page frame*/
+          if(access_time <= process_elapsed_time && !((page_table[i].process)->done)) {
+            /*PAGE FAULT! It must be loaded into a page frame*/
+            if(!page_table[i].present) {
+              /*Page substitution*/
+              do_page_substitution(i, thread->sbs);
+            }
+            /*Seeks for the content in the page frame*/
+            if(page_table[i].present) {
+              /*unsigned int wanted_position = (page_table[i].process)->position[(page_table[i].process)->index];*/
+              /*IDEA: Decide if the action if write or read using a rand call. If write, modified = true, else, modified = false*/
+              page_table[i].modified = true;
+              page_table[i].referenced = true;
+              /*Next action*/
+              (page_table[i].process)->index += 1;
+              page_table[i].time = 0;
+            }
+          }
+          /*Have a long time already since this page isn't being referenced*/
+          if(page_time >= 3) page_table[i].referenced = false;
+        }
+      }
+      /*sem_post(&safe_access_memory);*/
 
       /*Fetch earlier finish*/
       for(i = 0; i < plength; i++) {
@@ -122,7 +131,7 @@ void *run(void *args)
     if(head[2] != head[0] && head[2] != NULL) free(head[2]); head[2] = NULL;
     if(head[1] != head[0] && head[1] != NULL) free(head[1]); head[1] = NULL;
     if(head[0] != NULL) free(head[0]); head[0] = NULL;
-    free(ptable); ptable = NULL;
+    free(page_table); page_table = NULL;
     free(total_bitmap); total_bitmap = NULL;
     free(virtual_bitmap); virtual_bitmap = NULL;
   }
@@ -227,17 +236,12 @@ void *run(void *args)
       clock_gettime(CLOCK_MONOTONIC, &now);
       /*t is incremented by 0.1 every 0.1s*/
       if(abs(now.tv_nsec - range.tv_nsec) > 100000000) {
-        unsigned int i;
         /*IDEA: increment a local 't' to assign time global 'elapsed_time' atomically and avoid the use of a semaphore*/
         t += 0.1; elapsed_time = t;
         /*Update allocated processes lifetime*/
-        for(i = 0; i < plength; i++) {
-          bool allocated = process[i].allocated, done = process[i].done;
-          if(allocated && !done) {
-            float process_time_elapsed = process[i].lifetime;
-            process_time_elapsed += 0.1; process[i].lifetime = process_time_elapsed;
-          }
-        }
+        update_allocated_processes();
+        /*Update page table timers*/
+        update_page_table_times();
         /*Restart range*/
         clock_gettime(CLOCK_MONOTONIC, &range);
       }
@@ -246,16 +250,160 @@ void *run(void *args)
   return NULL;
 }
 
+/*Not Recently Used Page*/
+void nrup(unsigned int page, unsigned int **loaded_pages, unsigned int size)
+{
+  unsigned int *positions, *candidate, *leaving_page = NULL, class = 4, i;
+
+  /*Get page frame candidate to load the new page into*/
+  for(i = 0; i < size; i++) {
+    if(loaded_pages[i] == NULL) {
+      unsigned int j;
+      for(j = 0; j < size; j++)
+        if(total_bitmap[j * PAGE_SIZE] == -1) break;
+      candidate = &j; leaving_page = NULL;
+      break;
+    }
+    else {
+      unsigned int cl = 0;
+      if(page_table[*loaded_pages[i]].modified) cl += 1;
+      if(page_table[*loaded_pages[i]].referenced) cl += 2;
+      if(cl < class) {
+        class = cl;
+        candidate = page_table[*loaded_pages[i]].page_frame;
+        leaving_page = loaded_pages[i];
+      }
+      /*Draw. Decides who is leaving randomly*/
+      else if(cl == class) {
+        float roll;
+        srand(time(NULL));
+        roll = ((float)(rand() % 101)) / 100;
+        if(roll < 0.5)  {
+          candidate = page_table[*loaded_pages[i]].page_frame;
+          leaving_page = loaded_pages[i];
+        }
+      }
+    }
+  }
+
+  positions = malloc(PAGE_SIZE * sizeof(*positions));
+  for(i = 0; i < PAGE_SIZE; i++) positions[i] = (*candidate * PAGE_SIZE) + i;
+
+  sem_wait(&safe_access_memory);
+  write_to_memory(PHYSICAL, positions, PAGE_SIZE, page_table[page].process->pid);
+  sem_post(&safe_access_memory);
+
+  /*Update leaving page table*/
+  if(leaving_page != NULL) {
+    page_table[*leaving_page].page_frame = NULL;
+    page_table[*leaving_page].loaded_time = 0;
+    page_table[*leaving_page].present = false;
+    page_table[*leaving_page].referenced = false;
+    page_table[*leaving_page].modified = false;
+  }
+  /*update entering page table*/
+  page_table[page].page_frame = candidate;
+  page_table[page].loaded_time = elapsed_time;
+  page_table[page].present = true;
+  page_table[page].referenced = false;
+  page_table[page].modified = false;
+
+  free(positions); positions = NULL;
+}
+
+/*Select page substitution algorithm and substitute a page from the physical memory
+for one from the virtual*/
+void do_page_substitution(unsigned int page, int substitution_number)
+{
+  unsigned int **loaded_pages, i, j = 0;
+
+  loaded_pages = malloc((total / PAGE_SIZE) * sizeof(unsigned int *));
+  for(i = 0; i < (total / PAGE_SIZE); i++) loaded_pages[i] = NULL;
+
+  for(i = 0, j = 0; i < total_pages; i++)
+    if(page_table[i].present) loaded_pages[j++] = &i;
+
+  while(j < (total / PAGE_SIZE)) { loaded_pages[j++] = NULL; fprintf(stderr, "WEEE\n"); }
+
+  switch (substitution_number) {
+    case NRUP:
+        nrup(page, loaded_pages, total / PAGE_SIZE);
+      break;
+    case FIFO:
+      break;
+    case SCP:
+      break;
+    case LRUP:
+      break;
+  }
+  free(loaded_pages); loaded_pages = NULL;
+}
+
+/*Update page timer for allocated process*/
+void update_page_table_times()
+{
+  unsigned int i;
+  for(i = 0; i < total_pages; i++) {
+    Process *process = page_table[i].process;
+    if(process != NULL) {
+      float page_time_elapsed = page_table[i].time;
+      page_time_elapsed += 0.1; page_table[i].time = page_time_elapsed;
+    }
+  }
+}
+
+
+/*Update allocated processes lifetime*/
+void update_allocated_processes()
+{
+  unsigned int i;
+  for(i = 0; i < plength; i++) {
+    bool allocated = process[i].allocated, done = process[i].done;
+    if(allocated && !done) {
+      float process_time_elapsed = process[i].lifetime;
+      process_time_elapsed += 0.1; process[i].lifetime = process_time_elapsed;
+    }
+  }
+}
+
+/*Register allocated process information, writing information to virtual memory and updating page table*/
+void register_allocation(Process *process)
+{
+  Free_List *p;
+  unsigned int *positions, npos, j;
+  process->allocated = true;
+
+  /*Must write in the virtual binary file*/
+  p = head[j = 0]; while(p != NULL && j < 4) {
+    if(process->pid == p->process->pid) {
+      unsigned int k;
+      positions = malloc((npos = p->limit) * sizeof(*positions));
+      for(k = p->base; k < p->base + p->limit; k++) positions[k - p->base] = k;
+      break;
+    }
+    if(p->next == NULL && j < 4) { p = head[++j]; continue; }
+    p = p->next;
+  }
+  /*Access memory safely*/
+  sem_wait(&safe_access_memory);
+  /*Write pid in virtual file*/
+  write_to_memory(VIRTUAL, positions, npos, process->pid);
+  /*Assign to process table*/
+  assign_process_to_page_table(p);
+  sem_post(&safe_access_memory);
+  free(positions); positions = NULL;
+}
+
 /*Write to the binary file in the selected positions 'npos' (in the '*positions' array)
 the process 'pid' to register he is using these positions.*/
 void write_to_memory(int type, unsigned int *positions, unsigned int npos, uint8_t pid)
 {
+  unsigned int i, j;
   FILE *mfile, *mfile_u;
   int8_t *array;
   uint8_t *array_u;
 
   switch (type) {
-    unsigned int i, j;
     case PHYSICAL:
       array = malloc(total * sizeof(*array));
       array_u = malloc(total * sizeof(*array_u));
@@ -392,17 +540,23 @@ void initialize_free_list()
 }
 
 /*Add process to process table*/
-void assign_process_to_process_table(Free_List *fl)
+void assign_process_to_page_table(Free_List *fl)
 {
-  unsigned int i, process_table_index, number_of_pages;
+  unsigned int i, page_table_index, number_of_pages;
 
-  process_table_index = get_page_number(fl);
+  page_table_index = get_page_number(fl);
   number_of_pages = get_amount_of_pages(fl->process->size);
 
   for(i = 0; i < number_of_pages; i++) {
-    ptable[process_table_index].process = fl->process;
-    ptable[process_table_index].page = process_table_index;
-    process_table_index++;
+    page_table[page_table_index].process = fl->process;
+    page_table[page_table_index].page = page_table_index;
+    page_table[page_table_index].page_frame = NULL;
+    page_table[page_table_index].time = 0;
+    page_table[page_table_index].loaded_time = -1;
+    page_table[page_table_index].present = false;
+    page_table[page_table_index].referenced = false;
+    page_table[page_table_index].modified = false;
+    page_table_index++;
   }
 }
 
