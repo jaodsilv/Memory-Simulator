@@ -112,22 +112,26 @@ void create_memory(int type);
 void write_to_memory(int, unsigned int *, unsigned int, uint8_t);
 /*Free List manipulation prototypes*/
 void initialize_free_list();
-void initialize_page_table();
 int memory_allocation(Free_List *, Process *);
 int fit(Process *, int);
 int unfit(Process *);
-Free_List *fetch_ff(unsigned int);
-Free_List *fetch_nf(unsigned int);
-Free_List *fetch_qf(unsigned int);
-unsigned int get_page_number(Free_List *);
-unsigned int get_amount_of_pages(unsigned int);
+Free_List *ff(unsigned int);
+Free_List *nf(unsigned int);
+Free_List *qf(unsigned int);
+/*Page Table manipulation prototypes*/
+void initialize_page_table();
 void assign_process_to_page_table(Free_List *);
-void update_allocated_processes();
-void update_page_table_times();
 void register_allocation(Process *);
+void update_page_table_times();
+void update_allocated_processes();
+void update_page_table(unsigned int, unsigned int, unsigned int);
+/*Pages and Paging prototypes*/
+unsigned int get_amount_of_pages(unsigned int);
+unsigned int get_page_number(Free_List *);
 void do_paging(int);
 void do_page_substitution(unsigned int, int);
 void nrup(unsigned int, unsigned int *, unsigned int);
+
 
 /*TODO: working on these functions (not exactly with this signature)*/
 void access_memory(uint8_t PID, int pos);

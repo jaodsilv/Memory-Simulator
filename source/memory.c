@@ -226,11 +226,11 @@ void *run(void *args)
 /*Not Recently Used Page*/
 void nrup(unsigned int page, unsigned int *loaded_pages, unsigned int size)
 {
-  unsigned int *positions, candidate, leaving_page = FRESH, i, class = 4;
+  unsigned int *positions, candidate_frame, leaving_page = FRESH, i, class = 4;
 
   for(i = 0; i < size; i++) {
     if(loaded_pages[i] == FRESH) {
-      candidate = i; break;
+      candidate_frame = i; break;
     }
     else {
       unsigned int cl = 0;
@@ -238,16 +238,16 @@ void nrup(unsigned int page, unsigned int *loaded_pages, unsigned int size)
       if(page_table[loaded_pages[i]].modified) cl += 1;
       if(cl < class) {
         class = cl;
-        candidate = i;
+        candidate_frame = i;
         leaving_page = loaded_pages[i];
       }
       else if(cl == class) {
         float roll;
         srand(time(NULL));
         roll = ((float)(rand() % 101)) / 100;
-        /*50% chance to swap candidate in case of a draw*/
+        /*50% chance to swap candidate_frame in case of a draw*/
         if(roll < 0.5) {
-          candidate = i;
+          candidate_frame = i;
           leaving_page = loaded_pages[i];
         }
       }
@@ -255,13 +255,21 @@ void nrup(unsigned int page, unsigned int *loaded_pages, unsigned int size)
   }
 
   positions = malloc(PAGE_SIZE * sizeof(*positions));
-  for(i = 0; i < PAGE_SIZE; i++) positions[i] = (candidate * PAGE_SIZE) + i;
+  for(i = 0; i < PAGE_SIZE; i++) positions[i] = (candidate_frame * PAGE_SIZE) + i;
 
   sem_wait(&safe_access_memory);
   write_to_memory(PHYSICAL, positions, PAGE_SIZE, page_table[page].process->pid);
   sem_post(&safe_access_memory);
 
-  /*Update page table*/
+  /*Update entering and leaving page in the table*/
+  update_page_table(page, leaving_page, candidate_frame);
+
+  free(positions); positions = NULL;
+}
+
+/*Updates page table entries for the page leaving a frame and the page entering a frame*/
+void update_page_table(unsigned int page, unsigned int leaving_page, unsigned int candidate_frame)
+{
   /*If there is a leaving page*/
   if(leaving_page != FRESH) {
     page_table[leaving_page].page_frame = FRESH;
@@ -271,13 +279,11 @@ void nrup(unsigned int page, unsigned int *loaded_pages, unsigned int size)
     page_table[leaving_page].modified = false;
   }
   /*Now the new loaded page*/
-  page_table[page].page_frame = candidate;
+  page_table[page].page_frame = candidate_frame;
   page_table[page].loaded_time = elapsed_time;
   page_table[page].present = true;
   page_table[page].referenced = false;
   page_table[page].modified = false;
-
-  free(positions); positions = NULL;
 }
 
 /*Select page substitution algorithm and substitute a page from the physical memory
@@ -308,6 +314,7 @@ void do_page_substitution(unsigned int page, int substitution_number)
   free(loaded_pages); loaded_pages = NULL;
 }
 
+/*Do paging if an access attempt is detected*/
 void do_paging(int substitution_number)
 {
   unsigned int i;
@@ -735,15 +742,15 @@ int fit(Process *process, int fit_number)
   switch(fit_number) {
     Free_List *f;
     case FF:
-      f = fetch_ff(process->size);
+      f = ff(process->size);
       ret = memory_allocation(f, process);
       break;
     case NF:
-      f = fetch_nf(process->size);
+      f = nf(process->size);
       ret = memory_allocation(f, process);
       break;
     case QF:
-      f = fetch_qf(process->size);
+      f = qf(process->size);
       ret = memory_allocation(f, process);
       break;
   }
@@ -751,7 +758,7 @@ int fit(Process *process, int fit_number)
 }
 
 /*Returns a free space where the process can fit in, according to FF policy*/
-Free_List *fetch_ff(unsigned int size)
+Free_List *ff(unsigned int size)
 {
   Free_List *p;
 
@@ -761,7 +768,7 @@ Free_List *fetch_ff(unsigned int size)
 }
 
 /*Returns a free space where the process can fit in, according to NF policy*/
-Free_List *fetch_nf(unsigned int size)
+Free_List *nf(unsigned int size)
 {
   Free_List *p; bool tail = false; p = nf_next;
   while(p != nf_next || !tail) {
@@ -775,7 +782,7 @@ Free_List *fetch_nf(unsigned int size)
 }
 
 /*Returns a free space where the process can fit in, according to QF policy*/
-Free_List *fetch_qf(unsigned int size)
+Free_List *qf(unsigned int size)
 {
   Free_List *p;
 
