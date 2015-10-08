@@ -78,38 +78,8 @@ void *run(void *args)
         sem_post(&safe_access_list);
       }
 
-      /*Access memory safely*/
-      /*sem_wait(&safe_access_memory);*/
-      /*TODO: check if there is an available page frame and assign a page using the process table to it (= write pid in the right positions)*/
-      for(i = 0; i < total_pages; i++) {
-        if(page_table[i].process == NULL) continue;
-        else {
-          float page_time = page_table[i].time;
-          unsigned int access_time = (page_table[i].process)->time[(page_table[i].process)->index];
-          float process_elapsed_time = (page_table[i].process)->lifetime;
-          /*Check if the process wants to acess a page frame*/
-          if(access_time <= process_elapsed_time && !((page_table[i].process)->done)) {
-            /*PAGE FAULT! It must be loaded into a page frame*/
-            if(!page_table[i].present) {
-              /*Page substitution*/
-              do_page_substitution(i, thread->sbs);
-            }
-            /*Seeks for the content in the page frame*/
-            if(page_table[i].present) {
-              /*unsigned int wanted_position = (page_table[i].process)->position[(page_table[i].process)->index];*/
-              /*IDEA: Decide if the action if write or read using a rand call. If write, modified = true, else, modified = false*/
-              page_table[i].modified = true;
-              page_table[i].referenced = true;
-              /*Next action*/
-              /*(page_table[i].process)->index += 1;*/
-              page_table[i].time = 0;
-            }
-          }
-          /*Have a long time already since this page isn't being referenced*/
-          if(page_time >= 3) page_table[i].referenced = false;
-        }
-      }
-      /*sem_post(&safe_access_memory);*/
+      /*Do paging. Will check every page in the page table that is trying to make an access*/
+      do_paging(thread->sbs);
 
       /*Fetch earlier finish*/
       for(i = 0; i < plength; i++) {
@@ -336,6 +306,39 @@ void do_page_substitution(unsigned int page, int substitution_number)
   }
 
   free(loaded_pages); loaded_pages = NULL;
+}
+
+void do_paging(int substitution_number)
+{
+  unsigned int i;
+  for(i = 0; i < total_pages; i++) {
+    if(page_table[i].process == NULL) continue;
+    else {
+      float page_time = page_table[i].time;
+      unsigned int access_time = (page_table[i].process)->time[(page_table[i].process)->index];
+      float process_elapsed_time = (page_table[i].process)->lifetime;
+      /*Check if the process wants to acess a page frame*/
+      if(access_time <= process_elapsed_time && !((page_table[i].process)->done)) {
+        /*PAGE FAULT! It must be loaded into a page frame*/
+        if(!page_table[i].present) {
+          /*Page substitution*/
+          do_page_substitution(i, substitution_number);
+        }
+        /*Seeks for the content in the page frame*/
+        else {
+          /*unsigned int wanted_position = (page_table[i].process)->position[(page_table[i].process)->index];*/
+          /*IDEA: Decide if the action is write or read using a rand call. If write, modified = true, else, modified = false*/
+          page_table[i].modified = true;
+          page_table[i].referenced = true;
+          /*Next action*/
+          /*(page_table[i].process)->index += 1;*/
+          page_table[i].time = 0;
+        }
+      }
+      /*Have a long time already since this page isn't being referenced*/
+      if(page_time >= 3) page_table[i].referenced = false;
+    }
+  }
 }
 
 /*Update page timer for allocated process*/

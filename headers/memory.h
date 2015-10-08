@@ -125,6 +125,7 @@ void assign_process_to_page_table(Free_List *);
 void update_allocated_processes();
 void update_page_table_times();
 void register_allocation(Process *);
+void do_paging(int);
 void do_page_substitution(unsigned int, int);
 void nrup(unsigned int, unsigned int *, unsigned int);
 
