@@ -8,13 +8,8 @@ void simulate(int spc, int sbs, float intrvl)
   pthread_t threads[3];   /*Manager(position = 0), Printer(position = 1) and Timer(position = 2)*/
   Thread args[3];         /*Arguments of the pthreads*/
 
-  /*********************************/
-  /*TODO: A bunch of 'ifs' checking inputs (basically processes information.
-  Stuff like making sure no processes have an access time greater than its life time and this
-  kind of stuff just for security. Unlike EP1, lets assure that no 'impossible' process can be
-  created in order to don't fuck up with the statistics)*/
-  /*********************************/
-
+  /*Check if information of the processes are valid*/
+  if(!valid_process_information()) return;
   /*Initialize semaphore 'safe_access' to protect memory file access and free lists*/
   if(!initialize_mutex()) return;
   /*Assign roles to threads*/
@@ -31,7 +26,39 @@ void simulate(int spc, int sbs, float intrvl)
   initialize_free_list();
   /*Initialize simulator*/
   do_simulation(threads, args);
-  printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.1fs\n\n", elapsed_time);
+  printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.1fs.\n\n", elapsed_time);
+}
+
+/*Check if the process information from input are correct*/
+int valid_process_information()
+{
+  unsigned int i;
+  for(i = 0; i < plength; i++) {
+    unsigned int j;
+    if(process[i].size > virtual) {
+      printf("Error: process '%s' size is greater than the available virtual memory.\n", process[i].name);
+      printf("Correct the problem, reload the file with 'carrega' command and then run 'executa' again.\n");
+      return 0;
+    }
+    for(j = 0; j < process[i].length; j++) {
+      if(process[i].position[j] >= process[i].size) {
+        printf("Error: process '%s' access positions have incorrect value '%u' (must be smaller than process size %u).\n", process[i].name, process[i].position[j], process[i].size);
+        printf("Correct the problem, reload the file with 'carrega' command and then run 'executa' again.\n");
+        return 0;
+      }
+      if(process[i].time[j] > process[i].duration) {
+        printf("Error: process '%s' access time have incorrect value '%u' (must be between process arriving time %u and finishing time %u).\n", process[i].name, process[i].time[j] + process[i].arrival, process[i].arrival, process[i].finish);
+        printf("Correct the problem, reload the file with 'carrega' command and then run 'executa' again.\n");
+        return 0;
+      }
+      if(j > 0 && process[i].time[j - 1] > process[i].time[j]) {
+        printf("Error: process '%s' access times are not in ascending ordered.\n", process[i].name);
+        printf("Correct the problem, reload the file with 'carrega' command and then run 'executa' again.\n");
+        return 0;
+      }
+    }
+  }
+  return 1;
 }
 
 /*Initializes page table array, responsible to do the mapping*/

@@ -103,6 +103,7 @@ sem_t safe_access_list;    /*Mutex device to safely access free lists*/
 /*Prototypes*/
 /*Simulator setup & initialization prototypes*/
 void simulate(int, int, float);
+int valid_process_information();
 void assign_thread_roles(Thread *, int, int, float);
 void do_simulation(pthread_t *, Thread *);
 void *run(void *);
