@@ -42,7 +42,10 @@ void initialize_page_table()
   page_table = malloc(total_pages * sizeof(*page_table));
   for(i = 0; i < total_pages; i++) {
     page_table[i].process = NULL;
+    page_table[i].page_frame = FRESH;
     page_table[i].present = false;
+    page_table[i].referenced = false;
+    page_table[i].modified = false;
   }
 }
 
@@ -98,7 +101,7 @@ void *run(void *args)
               page_table[i].modified = true;
               page_table[i].referenced = true;
               /*Next action*/
-              (page_table[i].process)->index += 1;
+              /*(page_table[i].process)->index += 1;*/
               page_table[i].time = 0;
             }
           }
@@ -251,35 +254,30 @@ void *run(void *args)
 }
 
 /*Not Recently Used Page*/
-void nrup(unsigned int page, unsigned int **loaded_pages, unsigned int size)
+void nrup(unsigned int page, unsigned int *loaded_pages, unsigned int size)
 {
-  unsigned int *positions, *candidate, *leaving_page = NULL, class = 4, i;
+  unsigned int *positions, candidate, leaving_page = FRESH, i, class = 4;
 
-  /*Get page frame candidate to load the new page into*/
   for(i = 0; i < size; i++) {
-    if(loaded_pages[i] == NULL) {
-      unsigned int j;
-      for(j = 0; j < size; j++)
-        if(total_bitmap[j * PAGE_SIZE] == -1) break;
-      candidate = &j; leaving_page = NULL;
-      break;
+    if(loaded_pages[i] == FRESH) {
+      candidate = i; break;
     }
     else {
       unsigned int cl = 0;
-      if(page_table[*loaded_pages[i]].modified) cl += 1;
-      if(page_table[*loaded_pages[i]].referenced) cl += 2;
+      if(page_table[loaded_pages[i]].referenced) cl += 2;
+      if(page_table[loaded_pages[i]].modified) cl += 1;
       if(cl < class) {
         class = cl;
-        candidate = page_table[*loaded_pages[i]].page_frame;
+        candidate = i;
         leaving_page = loaded_pages[i];
       }
-      /*Draw. Decides who is leaving randomly*/
       else if(cl == class) {
         float roll;
         srand(time(NULL));
         roll = ((float)(rand() % 101)) / 100;
-        if(roll < 0.5)  {
-          candidate = page_table[*loaded_pages[i]].page_frame;
+        /*50% chance to swap candidate in case of a draw*/
+        if(roll < 0.5) {
+          candidate = i;
           leaving_page = loaded_pages[i];
         }
       }
@@ -287,21 +285,22 @@ void nrup(unsigned int page, unsigned int **loaded_pages, unsigned int size)
   }
 
   positions = malloc(PAGE_SIZE * sizeof(*positions));
-  for(i = 0; i < PAGE_SIZE; i++) positions[i] = (*candidate * PAGE_SIZE) + i;
+  for(i = 0; i < PAGE_SIZE; i++) positions[i] = (candidate * PAGE_SIZE) + i;
 
   sem_wait(&safe_access_memory);
   write_to_memory(PHYSICAL, positions, PAGE_SIZE, page_table[page].process->pid);
   sem_post(&safe_access_memory);
 
-  /*Update leaving page table*/
-  if(leaving_page != NULL) {
-    page_table[*leaving_page].page_frame = NULL;
-    page_table[*leaving_page].loaded_time = 0;
-    page_table[*leaving_page].present = false;
-    page_table[*leaving_page].referenced = false;
-    page_table[*leaving_page].modified = false;
+  /*Update page table*/
+  /*If there is a leaving page*/
+  if(leaving_page != FRESH) {
+    page_table[leaving_page].page_frame = FRESH;
+    page_table[leaving_page].loaded_time = 0;
+    page_table[leaving_page].present = false;
+    page_table[leaving_page].referenced = false;
+    page_table[leaving_page].modified = false;
   }
-  /*update entering page table*/
+  /*Now the new loaded page*/
   page_table[page].page_frame = candidate;
   page_table[page].loaded_time = elapsed_time;
   page_table[page].present = true;
@@ -315,19 +314,18 @@ void nrup(unsigned int page, unsigned int **loaded_pages, unsigned int size)
 for one from the virtual*/
 void do_page_substitution(unsigned int page, int substitution_number)
 {
-  unsigned int **loaded_pages, i, j = 0;
+  unsigned int *loaded_pages, size, i;
 
-  loaded_pages = malloc((total / PAGE_SIZE) * sizeof(unsigned int *));
-  for(i = 0; i < (total / PAGE_SIZE); i++) loaded_pages[i] = NULL;
+  loaded_pages = malloc((size = total / PAGE_SIZE) * sizeof(*loaded_pages));
+  for(i = 0; i < size; i++) loaded_pages[i] = FRESH;
 
-  for(i = 0, j = 0; i < total_pages; i++)
-    if(page_table[i].present) loaded_pages[j++] = &i;
-
-  while(j < (total / PAGE_SIZE)) { loaded_pages[j++] = NULL; fprintf(stderr, "WEEE\n"); }
+  for(i = 0; i < total_pages; i++)
+    if(page_table[i].present)
+      loaded_pages[page_table[i].page_frame] = i;
 
   switch (substitution_number) {
     case NRUP:
-        nrup(page, loaded_pages, total / PAGE_SIZE);
+        nrup(page, loaded_pages, size);
       break;
     case FIFO:
       break;
@@ -336,6 +334,7 @@ void do_page_substitution(unsigned int page, int substitution_number)
     case LRUP:
       break;
   }
+
   free(loaded_pages); loaded_pages = NULL;
 }
 
@@ -351,7 +350,6 @@ void update_page_table_times()
     }
   }
 }
-
 
 /*Update allocated processes lifetime*/
 void update_allocated_processes()
@@ -429,10 +427,10 @@ void write_to_memory(int type, unsigned int *positions, unsigned int npos, uint8
       /*Modify file*/
       for(i = 0; i < virtual; i++) {
         if(total_bitmap[i] == -1) {
-          fwrite(&array[i], sizeof(array[i]), 1, mfile_u);
+          fwrite(&array[i], sizeof(array[i]), (size_t)1, mfile_u);
         }
         else {
-          fwrite(&array_u[i], sizeof(array_u[i]), 1, mfile_u);
+          fwrite(&array_u[i], sizeof(array_u[i]), (size_t)1, mfile_u);
         }
       }
       fclose(mfile); fclose(mfile_u);
@@ -550,7 +548,7 @@ void assign_process_to_page_table(Free_List *fl)
   for(i = 0; i < number_of_pages; i++) {
     page_table[page_table_index].process = fl->process;
     page_table[page_table_index].page = page_table_index;
-    page_table[page_table_index].page_frame = NULL;
+    page_table[page_table_index].page_frame = FRESH;
     page_table[page_table_index].time = 0;
     page_table[page_table_index].loaded_time = -1;
     page_table[page_table_index].present = false;

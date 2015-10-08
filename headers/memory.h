@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <limits.h>
 
 /*Free space*/
 #define FF 1      /*First Fit*/
@@ -31,6 +32,9 @@
 /*Binary files creation*/
 #define PHYSICAL 0
 #define VIRTUAL  1
+
+/*Never loaded page frame*/
+#define FRESH UINT_MAX
 
 /*Structures*/
 typedef struct process {
@@ -71,8 +75,8 @@ typedef struct free_list {
 typedef struct page_table {
 	Process *process;             /*Process*/
 	unsigned int page;            /*Index in the process table*/
-	unsigned int *page_frame;     /*Frame owned by this process*/
-	float time;                   /*Time the process is allocated*/
+	unsigned int page_frame;      /*Frame owned by this process*/
+	float time;                   /*Time the process is allocated (= amount of time he is in the virtual memory)*/
 	float loaded_time;            /*Register the time this page was loaded into a page frame*/
 	bool present;                 /*Present bit*/
 	bool referenced;              /*Referenced bit*/
@@ -122,7 +126,7 @@ void update_allocated_processes();
 void update_page_table_times();
 void register_allocation(Process *);
 void do_page_substitution(unsigned int, int);
-void nrup(unsigned int, unsigned int **, unsigned int);
+void nrup(unsigned int, unsigned int *, unsigned int);
 
 /*TODO: working on these functions (not exactly with this signature)*/
 void access_memory(uint8_t PID, int pos);
