@@ -27,6 +27,10 @@ void simulate(int spc, int sbs, float intrvl)
   /*Initialize simulator*/
   do_simulation(threads, args);
   printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.1fs.\n\n", elapsed_time);
+  free_heads();
+  free(page_table); page_table = NULL;
+  free(total_bitmap); total_bitmap = NULL;
+  free(virtual_bitmap); virtual_bitmap = NULL;
 }
 
 /*Check if the process information from input are correct*/
@@ -65,6 +69,7 @@ int valid_process_information()
 void initialize_page_table()
 {
   unsigned int i;
+  tick = 0;
   total_pages = virtual / PAGE_SIZE;
   page_table = malloc(total_pages * sizeof(*page_table));
   for(i = 0; i < total_pages; i++) {
@@ -131,10 +136,6 @@ void *run(void *args)
 
       if(count == plength) simulating = 0;
     }
-    free_heads();
-    free(page_table); page_table = NULL;
-    free(total_bitmap); total_bitmap = NULL;
-    free(virtual_bitmap); virtual_bitmap = NULL;
   }
 
   /*Printer thread*/
@@ -184,6 +185,37 @@ void free_heads()
   if(head[2] != head[0] && head[2] != NULL) free(head[2]); head[2] = NULL;
   if(head[1] != head[0] && head[1] != NULL) free(head[1]); head[1] = NULL;
   if(head[0] != NULL) free(head[0]); head[0] = NULL;
+}
+
+/*First In First Out*/
+void fifo(unsigned int page, unsigned int *loaded_pages, unsigned int size)
+{
+  unsigned int *positions, candidate_frame, leaving_page = FRESH, i, lower_tick = FRESH;
+
+  for(i = 0; i < size; i++) {
+    if(loaded_pages[i] == FRESH) {
+      candidate_frame = i; break;
+    }
+    else {
+      if(page_table[loaded_pages[i]].tick < lower_tick) {
+        lower_tick = page_table[loaded_pages[i]].tick;
+        candidate_frame = i;
+        leaving_page = loaded_pages[i];
+      }
+    }
+  }
+
+  positions = malloc(PAGE_SIZE * sizeof(*positions));
+  for(i = 0; i < PAGE_SIZE; i++) positions[i] = (candidate_frame * PAGE_SIZE) + i;
+
+  sem_wait(&safe_access_memory);
+  write_to_memory(PHYSICAL, positions, PAGE_SIZE, page_table[page].process->pid);
+  sem_post(&safe_access_memory);
+
+  /*Update entering and leaving page in the table*/
+  update_page_table(page, leaving_page, candidate_frame);
+
+  free(positions); positions = NULL;
 }
 
 /*Not Recently Used Page*/
@@ -244,6 +276,7 @@ void update_page_table(unsigned int page, unsigned int leaving_page, unsigned in
   /*Now the new loaded page*/
   page_table[page].page_frame = candidate_frame;
   page_table[page].loaded_time = elapsed_time;
+  page_table[page].tick = tick++;
   page_table[page].present = true;
   page_table[page].referenced = false;
   page_table[page].modified = false;
@@ -267,7 +300,7 @@ void do_page_substitution(unsigned int page, int substitution_number)
         nrup(page, loaded_pages, size);
       break;
     case FIFO:
-      /*TODO: FIFO*/
+        fifo(page, loaded_pages, size);
       break;
     case SCP:
       /*TODO: SCP*/
@@ -298,7 +331,7 @@ void do_paging(int substitution_number)
           do_page_substitution(i, substitution_number);
         }
         /*Seeks for the content in the page frame*/
-        else {
+        if(page_table[i].present) {
           unsigned int positions[1];
           unsigned int wanted_position = (page_table[i].process)->position[(page_table[i].process)->index];
 

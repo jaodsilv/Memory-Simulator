@@ -76,6 +76,7 @@ typedef struct page_table {
 	Process *process;             /*Process*/
 	unsigned int page;            /*Index in the process table*/
 	unsigned int page_frame;      /*Frame owned by this process*/
+	unsigned int tick;
 	float time;                   /*Time the process is allocated (= amount of time he is in the virtual memory)*/
 	float loaded_time;            /*Register the time this page was loaded into a page frame*/
 	bool present;                 /*Present bit*/
@@ -94,6 +95,7 @@ Free_List *head[4];        /*First cell of the free list*/
 Free_List *nf_next;        /*Used by next fit algorithm to save last position*/
 Page_Table *page_table;    /*Structure to do the mapping from virtual memory to physical memory*/
 unsigned int total_pages;  /*Total number of pages*/
+unsigned int tick;
 int *virtual_bitmap;
 int *total_bitmap;
 /*Mutex*/
