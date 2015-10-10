@@ -136,15 +136,5 @@ unsigned int get_page_number(Free_List *);
 void do_paging(int);
 void do_page_substitution(unsigned int, int);
 void nrup(unsigned int, unsigned int *, unsigned int);
-
-
-/*TODO: working on these functions (not exactly with this signature)*/
-void access_memory(uint8_t PID, int pos);
-int64_t create_process(char* name, int mem_size);
-void start_process(uint8_t PID);
-void kill_process(uint8_t PID);
-
-
-
-/* Information about process and events */
-/* needs #include <stdint.h> on .c */
+void fifo(unsigned int, unsigned int *, unsigned int);
+void scp(unsigned int, unsigned int *, unsigned int);

@@ -187,6 +187,54 @@ void free_heads()
   if(head[0] != NULL) free(head[0]); head[0] = NULL;
 }
 
+/*Second CHance Page*/
+void scp(unsigned int page, unsigned int *loaded_pages, unsigned int size)
+{
+  unsigned int *positions, candidate_frame, leaving_page = FRESH, i, j, lower_tick = FRESH;
+  unsigned int first_second_chance_candidate_frame = FRESH, first_second_chance_leaving_page;
+
+  for(j = 0; j < size; j++) {
+    for(i = 0; i < size; i++) {
+      if(loaded_pages[i] == FRESH) {
+        candidate_frame = i; break;
+      }
+      else {
+        if(page_table[loaded_pages[i]].tick < lower_tick) {
+          lower_tick = page_table[loaded_pages[i]].tick;
+          candidate_frame = i;
+          leaving_page = loaded_pages[i];
+        }
+      }
+    }
+    if(loaded_pages[candidate_frame] != FRESH && page_table[loaded_pages[candidate_frame]].referenced) {
+      if(first_second_chance_candidate_frame == FRESH) {
+        first_second_chance_candidate_frame = candidate_frame;
+        first_second_chance_leaving_page = leaving_page;
+      }
+      page_table[loaded_pages[candidate_frame]].tick = tick++;
+      lower_tick = FRESH;
+    }
+    else break;
+  }
+
+  if(j == size && first_second_chance_candidate_frame != FRESH) {
+    candidate_frame = first_second_chance_candidate_frame;
+    leaving_page = first_second_chance_leaving_page;
+  }
+
+  positions = malloc(PAGE_SIZE * sizeof(*positions));
+  for(i = 0; i < PAGE_SIZE; i++) positions[i] = (candidate_frame * PAGE_SIZE) + i;
+
+  sem_wait(&safe_access_memory);
+  write_to_memory(PHYSICAL, positions, PAGE_SIZE, page_table[page].process->pid);
+  sem_post(&safe_access_memory);
+
+  /*Update entering and leaving page in the table*/
+  update_page_table(page, leaving_page, candidate_frame);
+
+  free(positions); positions = NULL;
+}
+
 /*First In First Out*/
 void fifo(unsigned int page, unsigned int *loaded_pages, unsigned int size)
 {
@@ -303,7 +351,7 @@ void do_page_substitution(unsigned int page, int substitution_number)
         fifo(page, loaded_pages, size);
       break;
     case SCP:
-      /*TODO: SCP*/
+        scp(page, loaded_pages, size);
       break;
     case LRUP:
       /*TODO: LRUP*/
