@@ -138,3 +138,4 @@ void do_page_substitution(unsigned int, int);
 void nrup(unsigned int, unsigned int *, unsigned int);
 void fifo(unsigned int, unsigned int *, unsigned int);
 void scp(unsigned int, unsigned int *, unsigned int);
+void lrup(unsigned int, unsigned int *, unsigned int);

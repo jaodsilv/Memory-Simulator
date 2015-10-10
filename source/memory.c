@@ -187,13 +187,51 @@ void free_heads()
   if(head[0] != NULL) free(head[0]); head[0] = NULL;
 }
 
-/*Second CHance Page*/
+/*Least Recently Used*/
+/*NOTE: This function is identical to FIFO (and its being kept duplicated here just for didatic purpose),
+as LRU also maintain a list of pages. The key difference is in a 'if' statement in the 'do_paging' function.
+There it will always increment the tick value of an accessed page,
+thus working like 'placing in the end of the list'. This solution was based off the following link:
+http://www.mathcs.emory.edu/~cheung/Courses/355/Syllabus/9-virtual-mem/LRU-replace.html*/
+void lrup(unsigned int page, unsigned int *loaded_pages, unsigned int size)
+{
+  unsigned int *positions, candidate_frame, leaving_page = FRESH, i, lower_tick = FRESH;
+
+  /*Select candidate frame to contain the new page. The older page is the one with the lower 'logical tick'*/
+  for(i = 0; i < size; i++) {
+    if(loaded_pages[i] == FRESH) {
+      candidate_frame = i; break;
+    }
+    else {
+      if(page_table[loaded_pages[i]].tick < lower_tick) {
+        lower_tick = page_table[loaded_pages[i]].tick;
+        candidate_frame = i;
+        leaving_page = loaded_pages[i];
+      }
+    }
+  }
+
+  positions = malloc(PAGE_SIZE * sizeof(*positions));
+  for(i = 0; i < PAGE_SIZE; i++) positions[i] = (candidate_frame * PAGE_SIZE) + i;
+
+  sem_wait(&safe_access_memory);
+  write_to_memory(PHYSICAL, positions, PAGE_SIZE, page_table[page].process->pid);
+  sem_post(&safe_access_memory);
+
+  /*Update entering and leaving page in the table*/
+  update_page_table(page, leaving_page, candidate_frame);
+
+  free(positions); positions = NULL;
+}
+
+/*Second Chance Page*/
 void scp(unsigned int page, unsigned int *loaded_pages, unsigned int size)
 {
   unsigned int *positions, candidate_frame, leaving_page = FRESH, i, j, lower_tick = FRESH;
   unsigned int first_second_chance_candidate_frame = FRESH, first_second_chance_leaving_page;
 
   for(j = 0; j < size; j++) {
+    /*Select candidate frame to contain the new page*/
     for(i = 0; i < size; i++) {
       if(loaded_pages[i] == FRESH) {
         candidate_frame = i; break;
@@ -206,7 +244,10 @@ void scp(unsigned int page, unsigned int *loaded_pages, unsigned int size)
         }
       }
     }
+    /*Check if this page have a second chance checking reference bit*/
     if(loaded_pages[candidate_frame] != FRESH && page_table[loaded_pages[candidate_frame]].referenced) {
+      /*Register the first page to get a second chance. If happens that every page get a second chance, the first one will leave
+      This is a strategy to avoid a case where an infinite loop can happen*/
       if(first_second_chance_candidate_frame == FRESH) {
         first_second_chance_candidate_frame = candidate_frame;
         first_second_chance_leaving_page = leaving_page;
@@ -217,6 +258,7 @@ void scp(unsigned int page, unsigned int *loaded_pages, unsigned int size)
     else break;
   }
 
+  /*If we had every page with referenced bit on, we remove the older one*/
   if(j == size && first_second_chance_candidate_frame != FRESH) {
     candidate_frame = first_second_chance_candidate_frame;
     leaving_page = first_second_chance_leaving_page;
@@ -240,6 +282,7 @@ void fifo(unsigned int page, unsigned int *loaded_pages, unsigned int size)
 {
   unsigned int *positions, candidate_frame, leaving_page = FRESH, i, lower_tick = FRESH;
 
+  /*Select candidate frame to contain the new page. The older page is the one with the lower 'logical tick'*/
   for(i = 0; i < size; i++) {
     if(loaded_pages[i] == FRESH) {
       candidate_frame = i; break;
@@ -271,11 +314,13 @@ void nrup(unsigned int page, unsigned int *loaded_pages, unsigned int size)
 {
   unsigned int *positions, candidate_frame, leaving_page = FRESH, i, class = 4;
 
+  /*Select candidate frame to contain the new page*/
   for(i = 0; i < size; i++) {
     if(loaded_pages[i] == FRESH) {
       candidate_frame = i; break;
     }
     else {
+      /*Rank the pages and check final score. The score will determine the leaving page*/
       unsigned int cl = 0;
       if(page_table[loaded_pages[i]].referenced) cl += 2;
       if(page_table[loaded_pages[i]].modified) cl += 1;
@@ -354,7 +399,7 @@ void do_page_substitution(unsigned int page, int substitution_number)
         scp(page, loaded_pages, size);
       break;
     case LRUP:
-      /*TODO: LRUP*/
+        lrup(page, loaded_pages, size);
       break;
   }
 
@@ -396,7 +441,11 @@ void do_paging(int substitution_number)
           /*Next action*/
           if((page_table[i].process)->index < (page_table[i].process)->length)
             (page_table[i].process)->index += 1;
+          /*reset timer*/
           page_table[i].time = 0;
+          /*LRU algorithm increments 'logical tick' in every reference, due to the assumption that a page
+          being used at present will be used again in the next future*/
+          if(substitution_number == LRUP) page_table[i].tick = tick++;
         }
       }
       /*Have a long time already since this page isn't being referenced*/
