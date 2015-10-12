@@ -201,7 +201,7 @@ int read_trace_file(char *fname)
       /*Get pn*/
       if(i % 2 == 0) process[p].position[i / 2] = lists[i];
       /*Get tn*/
-      else process[p].time[i / 2] = lists[i] - process[p].arrival;
+      else process[p].time[i / 2] = lists[i];
     }
 
     process[p].duration = process[p].finish - process[p].arrival;

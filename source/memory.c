@@ -50,8 +50,13 @@ int valid_process_information()
         printf("Correct the problem, reload the file with 'carrega' command and then run 'executa' again.\n");
         return 0;
       }
-      if(process[i].time[j] > process[i].duration) {
-        printf("Error: process '%s' access time have incorrect value '%u' (must be between process arriving time %u and finishing time %u).\n", process[i].name, process[i].time[j] + process[i].arrival, process[i].arrival, process[i].finish);
+      if(process[i].time[j] < process[i].arrival) {
+        printf("Error: process '%s' access time have incorrect value '%u' (access time must be greater than the arrival time %u).\n", process[i].name, process[i].time[j], process[i].arrival);
+        printf("Correct the problem, reload the file with 'carrega' command and then run 'executa' again.\n");
+        return 0;
+      }
+      if(process[i].time[j] > process[i].finish) {
+        printf("Error: process '%s' access time have incorrect value '%u' (access time must be lower than the finishing time %u).\n", process[i].name, process[i].time[j], process[i].finish);
         printf("Correct the problem, reload the file with 'carrega' command and then run 'executa' again.\n");
         return 0;
       }
@@ -60,6 +65,7 @@ int valid_process_information()
         printf("Correct the problem, reload the file with 'carrega' command and then run 'executa' again.\n");
         return 0;
       }
+      process[i].time[j] -= process[i].arrival;
     }
   }
   return 1;
@@ -106,7 +112,6 @@ void *run(void *args)
       if(i < plength) {
         sem_wait(&safe_access_list);
         if(fit(&process[i], thread->spc)) register_allocation(&process[i]);
-        /*TODO: else compact_memory*/
         sem_post(&safe_access_list);
       }
 

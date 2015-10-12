@@ -10,7 +10,6 @@ memory.o: source/memory.c
 clean:
 	rm -rf source/obj/*.o
 	rm -rf source/*~
-	rm -rf outputs/*.txt
 	rm -rf a.out
 	rm ep2
 	rm /tmp/ep2.mem

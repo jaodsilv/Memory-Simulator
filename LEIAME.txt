@@ -5,29 +5,36 @@ Integrantes: Renan Fichberg      7991131
 
 1. Compilação
 
-Para compilação do código-fonte basta invocar no terminal
+Para compilação do código-fonte basta invocar do terminal
 o seguinte comando, estando no diretório que contém o makefile:
 
 § make all
 
-Tal chamada criará ambos os binários, mencionados acima, no mesmo diretório
-do makefile.
+Tal chamada criará o binário necessário para executar o programa, no mesmo diretório
+do makefile, e moverá os arquivos .o para o diretórios /source/obj.
 
 2. Uso
 
+Para usar o simulador de memória, basta invocar o comando seguinte do terminal, sem parâmetros:
+
+§ ./ep2
+
+Uma vez feito isso, o usuário estará no prompt do programa. Lá, ele poderá executar qualquer um
+dos comandos exigidos no enunciado.
+
+Obs1: O comando 'executa' aceita intervalos de tempo não inteiros também.
+Obs2: Para usar o comando executa, necessariamente precisa ser usado o comando carrega antes.
+Obs3: Há uma checagem, logo que inicia a simulação (não o prompt), do arquivo de tracing de entrada.
 
 3. Organização.
 
-Como haviam muitos arquivos, optamos por fazer essa organização de
-diretórios.
+Optamos por fazer essa organização de diretórios.
 
-1) makefile e binários estarão no diretório 'raiz' do programa.
-2) entradas estarão no diretório inputs/
-3) saídas estarão no diretório outputs/
-4) código-fonte estará no diretório source/
-5) arquivos .o gerados na compilação estarão no diretório source/obj/
-6) arquivos .h podem ser encontrados no diretório headers/
-7) slides podem ser encontrados no diretório presentation/
+1) makefile e binário estarão no diretório 'raiz' do programa.
+2) código-fonte estará no diretório source/
+3) arquivos .o gerados na compilação estarão no diretório source/obj/
+4) arquivos .h podem ser encontrados no diretório headers/
+5) slides podem ser encontrados no diretório presentation/
 
 O programa está organizado desta maneira para facilitar a localização dos itens.
 
@@ -38,21 +45,212 @@ localizações:
 
 1) makefile - para compilação
 2) LEIAME.txt - este documento
-3) inputs/ - diretório que deverá conter as entradas da simulação
-4) outputs/ - diretório que conterá as informações da simulação após o término
-da sua execução
-5) source/ - diretório com o código-fonte
-14) source/obj/ - diretório que irá conter todos os arquivos .o
-15) headers/ - diretório com os .h
-25) presentation/slides.pdf - Slides a serem usados na apresentação em sala.
+3) source/ - diretório com o código-fonte
+4) source/ep2.c
+5) source/memory.c
+6) source/obj/ - diretório que irá conter todos os arquivos .o
+7) headers/ - diretório com os .h
+8) headers/ep2.h
+9) headers/memory.h
+10) presentation/slides.pdf - Slides a serem usados na apresentação em sala.
 
 5. Sobre o código.
 
+A respeito da entrada, será discutido no item seguinte.
+Quanto ao código, a tarefa da simulação é dividida entre 3 threads: Manager, Printer e Timer.
 
-6. Exemplo de entrada.
+5.1) Manager Thread
 
+Esta thread é responsável por toda a parte lógica da simulação. Ela cuida das alocações do espaço
+virtual com os algoritmos de gerência de espaço (usa o que foi escolhido. Se nenhum for escolhido, o
+algoritmo default é o First-Fit) e da paginação (usa o algorimo que foi escolhido. Se nenhum for escolhido,
+o algoritmo default é o Not-Recently-Used-Page).
 
-7. Observações.
+As alocações são feitas usando uma lista ligada duplamente encadeada, que é imprimida na tela de tempos em tempos.
+O tamanho inicial da lista é o tamanho da memória virtual (um multiplo de 16, que é o tamanho de cada página e cada
+quadro de página). Inicialmente, temos uma célula livre com base = 0 e limite = 'virtual'. Conforme as alocações vão ocorrendo,
+a lista vai aumentando e o espaço livre vai diminuindo, assim, se um processo de tamanho 8 chegar antes, um espaço de 16 será alocado
+para ele (mesmo que ele não use todos os 16 bytes), e a lista ficaria algo como [process0, 0, 16] <-> [free, 16, virtual].
+O EP não está fazendo compactação de memória, pois nada foi exigido no enunciado. Então, se acontecer uma situação como
+[free, 0, 16] <-> [processX, 16, 32] <-> [free, 32, virtual], o programa NÃO ira transformar isso em
+[processX, 0, 16] <-> [free, 16, virtual]. O que vai acontecer é que quando o processX terminar de fazer tudo o que precisa, a
+lista será transformada em [free, 0, virtual] novamente (A compactação ocorre apenas durante as desalocações, considerando os vizinhos
+do processo que está sendo desalocado, e não a lista toda). Se a lista estiver cheia ou não tem espaço suficiente para alocar qualquer
+processo que esteja chegando, estes processos vão ficar esperando por um espaço.
+Uma vez que o processo é alocado, além dele ganhar um espaço na lista encadeada, ele também é escrito no binário de memória virtual, nas
+respectivas posições. Se a célula dele na lista ligada for [processX, X, X + 16], então na memória virtual, ele terá seu PID escrito
+nas posições [X, X + 16[. Quando um processo consegue um quadro de página, a mesma coisa ocorre com relação ao aqruivo de memória física.
+Esta thread também é responsável por ficar de olho nos acessos. Sempre que acontecer uma tentativa de acesso por parte de algum
+dos processos, o manager irá substituir uma das páginas de um dos quadros e em seguida atualizará a tabela de páginas. A cada 3s,
+processos que tiverem seus bits R ligados serão desligados. Precisam ser, necessariamente, períodos de 3s em que não houve quaisquer tentativas
+de acesso àquele quadro.
 
-- uma chamada 'make clean' irá limpar todos os diretórios, menos o de 'inputs/'.
-Cuidado que as suas saídas serão deletadas de 'outputs/', também.
+Um processo consegue um quadro de página quando:
+a) não há nenhum processo utilizando aquele quadro (no arquivo, a posição contém -1).
+b) ocorreu um acesso e a memória física está cheia e uma das páginas na memória virtual
+obrigatoriamente será substituida.
+
+5.1.1) Algoritmos de gerência de espaço livre
+
+Os algoritmos implementados foram:
+
+5.1.1.1) First-Fit
+
+- Varre a lista encadeada, sempre começando da cabeça.
+- Se encontrar uma posição em que o processo caiba, aloca.
+- Se não encontrar, nada acontece e o processo ficará esperando até ter um
+espaço que o comporte.
+
+5.1.1.2) Next-Fit
+
+- Varre a lista encadeada, sempre começando da última posição (não necessariamente da cabeça).
+- Se encontrar uma posição em que o processo caiba, aloca.
+- Se não encontrar, nada acontece e o processo ficará esperando até ter um
+espaço que o comporte.
+
+5.1.1.3) Quick-Fit
+
+- Aqui existem 4 listas ligadas duplamente encadeadas.
+- A lista sempre é varrida da cabeça até o final, como o First-Fit.
+- Dependendo do tamanho do processo, ele é direcionado a uma ou outra lista.
+- Os tamanhos escolhidos foram:
+a) para processos de tamanho b <= 16
+b) para processes de tamanho 16 < b <= 64
+c) para processos de tamanho 64 < b <= 256
+d) para processos de tamanho b > 256
+
+Não há nada de especial na escolha destes tamanhos além do fato de serem múltiplos de 16.
+
+- Se encontrar uma posição em que o processo caiba, aloca.
+- Se não encontrar, nada acontece e o processo ficará esperando até ter um
+espaço que o comporte.
+
+5.1.2) Algoritmos de substituição de páginas
+
+Os algoritmos implementados foram:
+
+5.1.2.1) Not-Recently-Used-Page
+
+- As páginas dos processos que possuem um quadro de página são rankeadas de acordo
+com os seus bits R e M.
+- Todos os acessos no nosso EP são considerados como escrita, portanto, sempre que um acesso ocorre,
+o bit M assume o valor de 1 (esta decisão foi apenas para fazer com que o bit M não fosse apenas simbólico).
+- Possíveis valores:
+a) Classe 0: bits R e M desligados - na prática, este estado não acontece.
+b) Classe 1: bit R desligado, bit M ligado.
+c) Classe 2: bit R ligado, bit M desligado - na prática, este estado não acontece.
+d) Classe 3: bits R e M ligados.
+- A página de menor classe é substituida. Se houver empate, é elegida aleatoriamente a página que sairá usando a função rand.
+
+5.1.2.2) First-In-First-Out
+
+- As páginas, ao conseguirem um quadro de página, recebem um valor inteiro que representa a sua posição na fila.
+- Das páginas que tiverem um quadro de página, aquela que tiver o menor valor no 'tick lógico' (o inteiro mencionado
+anteriormente) é a mais antiga.
+- Busca a página com o menor tick lógico e a remove. A nova página recebe o valor do tick logico atual e o tick lógico
+é incrementado para a próxima página receber quando obtiver um quadro de página (o tick logico não é usado se não
+acontecer Page Fault neste algoritmo).
+
+5.1.2.3) Second-Chance-Page
+
+- As páginas, ao conseguirem um quadro de página, recebem um valor inteiro que representa a sua posição na fila.
+- Das páginas que tiverem um quadro de página, aquela que tiver o menor valor no 'tick lógico' (o inteiro mencionado
+anteriormente) é a mais antiga.
+- Busca a página com o menor tick lógico. Se a página tiver o bit R desligado, ela é removida. Caso contrário, ela recebe
+ uma nova chance (e portanto seu tick logico é substituido pelo valor atual, e este é incrementado para a próxima página. Isso
+ tem o mesmo efeito de colocá-la no final da fila) e uma nova busca é iniciada. Se acontecer de todas as páginas
+ receberem uma segunda chance, então a que recebeu a segunda chance primeiro é que será substituida.
+
+5.1.2.3) Least-Recently-Used-Page
+
+- As páginas, ao conseguirem um quadro de página, recebem um valor inteiro que representa a sua posição na fila (fila para
+ver quem está mais perto e quem está mais longe de sair. Agora não tem nada a ver com ordem de chegada).
+- Das páginas que tiverem um quadro de página, aquela que tiver o menor valor no 'tick lógico' (o inteiro mencionado
+anteriormente) é a candidata a sair (aqui o tick não assume o papel de ver quem é a mais antiga).
+- Busca a página com o menor tick lógico e a remove. A nova página recebe o valor do tick logico atual e o tick lógico
+é incrementado para a próxima página receber quando obtiver um quadro de página (o tick logico não é usado se não
+acontecer Page Fault neste algoritmo).
+- Um tick não é atribuido somente no momento da substituição, mas também a cada acesso ocorrido. A página acessada
+recebe o valor atual do tick (e portanto, sendo colocada naquele momento como a menos provável de sair. Por causa disso que
+neste algoritmo, diferentemente do FIFO, a fila não assume um papel de ver quem é mais antigo e quem é mais novo, mas sim
+quem é mais ou menos usado).
+
+5.2) Printer Thread
+
+Responsável por imprimir os estados dos arquivos binários e da lista duplamente encadeada. Naturalmente, como
+essa thread e a Manager competem pelo acesso à lista e aos arquivos binários, é de se esparar que exista uma semáforo
+que controla os acessos destes 3 recursos (2 arquivos e a lista). A thread Printer vai sempre tentar imprimir
+os estados destes itens de intervalo em intervalo de segundos (intervalo é o parametro do comando executa, e no nosso programa,
+este valor pode ser um ponto flutuante), mas é esperado que dependendo da quantidade de acessos a estes recursos, a Printer Thread
+tenha de esperar no semáforo até a Manager terminar o que está fazendo e, assim, atrasando o mínimo possível a impressão (os tempos
+serão sempre impressos considerando o relógio do simulador).
+Há 2 semáforos no simulador: um para proteger a lista e outro para proteger os arquivos.
+
+5.3) Timer Thread
+
+Responsável por controlar o tempo de simulação e atualizar todas variáveis de tempo da simulação.
+Esta thread existe para dar maior garantia de que as impressões estarão mais próximas dos seus tempos reais.
+Se o papel do tempo estivesse na Manager ou na printer, os semáforos ou mesmo a lógica da Manager iriam atrasar
+na impressão do tempo e as impressões seriam menos fiéis ao intervalo de tempo requisitado em 'executa'.
+
+6. Manipulação dos binários em C
+
+Para manipular os arquivos binários, a estratégia utilizada foi usar a biblioteca stdint com os tipos
+uint8_t e int8_t. Cada um destes tipo comporta 1 byte e nos dá a garantia de que os arquivos terão exatamente
+os tamanhos exigidos. Inicialmente, nos arquivos, são escritos valores de -1 em todas as posições usando o tipo
+int8_t. Conforme as posições vão sendo alocadas, as posições de int8_t são subsituidas por valores do tipo uint8_t.
+Isso significa que sempre ao abrir os arquivos, traalhos com 2 ponteiros do tipo FILE e arrays tanto de uint8_t como de
+int8_t. Ainda, são usados vetores de int que funcionam como mapas, que servem para alertar o programa quais áreas nunca foram alocadas e quais
+foram (pois não é possível comparar uint8_t e int8_t sem ter problemas, dado que podem haver truncamentos e o próprio compilador gera
+warnings com esta prática, o que não é legal) que auxiliam o problema a tratar da substituição dos valores int8_t por uint8_t.
+
+7. Arquivo de tracing.
+
+Nesta seção falaremos um pouco sobre a checagem da entrada realizada pelo simulador
+e deixaremos um exemplo de entrada
+
+7.1. Formato de entrada
+
+O simulador vai exigir que a o arquivo de tracing respeite as seguintes regras:
+
+0) As memórias 'virtual' e 'total' devem ter um tamanho múltiplo de 16.
+1) O tamanho 'b' de qualquer processo deve ser menor que o valor colocado em 'virtual'.
+2) Um processo que tem um tamanho 'b', poderá fazer acessos aos seus "endereços locais"
+no intervalo [0, b[. O valor dos "endereços locais" são inteiros. Ou seja, para
+todos os valores da lista de pn, devemos ter que 0 < pn < b. A checagem de pn > 0 não é realizada,
+mas a de pn < b sim.
+3) Um processo que tem tempo de de chegada 't0' deve ter todos os seus tempos de acesso tn
+iguais ou superiores a 't0'. Um processo que tem um tempo de saída igual a 'tf' deve ter todos os
+seus tempos de acesso tn iguais ou inferiores a 'tf'. Ou seja, para todos os efeitos, devemos
+ter que t0 <= tn <= tf. O simulador barra quaisquer entradas que não sigam isso.
+4) Os tempos tn de cada processo devem aparecer em ordem crescente, ou seja, para qualquer
+tempo de acesso i > 0, devemos ter que tn_i <= tn_i+1.
+
+Estas exigências são importantes por causa da forma que o nosso simulador gerencia os acessos e os espaços.
+Os espaços são 'transformados' na hora do acesso com uma soma da base do quadro de página que o processo obteve + pn
+Os tempos de acesso são transformados logo que inicia a simulação e o que é usado de fato para manipular os processos
+é a duração que o processo deve existir (tf - t0) e os tempos de acesso dentro do intervalo de duração (tn - t0).
+
+Isto é feito para todos os processos.
+
+Obs: não há checagem para isso, mas é esperado que todos os números da entrada sejam inteiros e não-negativos.
+
+7.2 Exemplo de entrada
+A seguir um exemplo de entrada válida para o nosso programa:
+
+32 64
+0 process0 7 6 2 1 4 5 0 6
+0 process1 10 4 0 4 1 5 3 6 2 9
+1 process2 6 12 10 2 5 4 5 5
+4 process3 16 10 3 8 8 9 2 14
+3 process4 9 20 5 4 12 6 14 7 18 9
+6 process5 10 18 12 9 16 10 8 10 4 10
+5 process6 14 14 7 5 9 10 12 11 13 12 12 13 3 14
+3 process7 14 8 1 4 0 6 7 7
+
+Você pode copiar e colar esta entrada em um arquivo .txt para teste.
+
+8. Observações.
+
+- a chamada 'make clean' irá limpar o diretório /source/obj e também removerá
+os arquivos binários ep2.mem e ep2.vir, criados na execução, localizados em /tmp
