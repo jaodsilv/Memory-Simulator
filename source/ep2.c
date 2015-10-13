@@ -51,8 +51,10 @@ int main()
 /*Reset last loaded file for a re-run*/
 void reset()
 {
-  unsigned int i;
+  unsigned int i, j;
   for(i = 0; i < plength; i++) {
+    for(j = 0; j < process[i].length; j++)
+      process[i].time[j] += process[i].arrival;
     process[i].lifetime = 0;
     process[i].index = 0;
     process[i].done = false;
