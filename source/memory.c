@@ -683,7 +683,7 @@ void assign_process_to_page_table(Free_List *fl)
 unsigned int get_amount_of_pages(unsigned int size)
 {
   unsigned int number_of_pages;
-  return (number_of_pages = (size / PAGE_SIZE) + 1);
+  return (number_of_pages = ((size - 1) / PAGE_SIZE) + 1);
 }
 
 /*Get the page number. The page number is the index in the page table for the process allocated with base fl->base.*/
@@ -712,7 +712,6 @@ int memory_allocation(Free_List *fl, Process *process)
       fprintf(stderr, "Error: bad fetch. Was expecting an available memory space.\n");
     return 0;
   }
-
 
   /*Remaining free space. There will be no remaining free space
   from the old cell if fl->limit == process->size*/
