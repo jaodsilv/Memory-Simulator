@@ -494,7 +494,7 @@ void register_allocation(Process *process)
 
   /*Must write in the virtual binary file*/
   p = head[j = 0]; while(p != NULL && j < 4) {
-    if(process->pid == p->process->pid) {
+    if(p->process != NULL && process->pid == p->process->pid) {
       unsigned int k;
       positions = malloc((npos = p->limit) * sizeof(*positions));
       for(k = p->base; k < p->base + p->limit; k++) positions[k - p->base] = k;

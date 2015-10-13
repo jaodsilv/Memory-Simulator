@@ -414,17 +414,3 @@ int sucessful_atof(char *number)
   }
   return 1;
 }
-
-
-/*
-Notas:
-- Mudado para C pq não vejo necessidade de usar OOP
-- TODO: Colocar PID nos processos
-- TODO: execute ep2
-
-Observações:
-- Não tem saídas para serem escritas neste EP (I), e o arquivo de trace é localizado
-interativamente com o comando 'carrega' (II). Por causa de (I), não há necessidade de usarmos
-a arquitetura com diretório de 'outputs' e por causa de (II), não há necessidade de usarmos
-a arquitetura com diretório 'inputs'.
-*/
