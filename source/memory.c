@@ -26,7 +26,7 @@ void simulate(int spc, int sbs, float intrvl)
   initialize_free_list();
   /*Initialize simulator*/
   do_simulation(threads, args);
-  printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.1fs.\n\n", elapsed_time);
+  printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.2fs.\n\n", elapsed_time);
   free_heads();
   free(page_table); page_table = NULL;
   free(total_bitmap); total_bitmap = NULL;
@@ -153,7 +153,7 @@ void *run(void *args)
       /*IDEA: Assign atomically to ret first and then do a local comparission between ret and last to avoid using a semaphore*/
       ret = elapsed_time;
       if(last != ret) {
-        last = ret; t += 0.1;
+        last = ret; t += TIME_GRAIN;
         if(t >= thread->intrvl) { t = 0; print_memory(last); }
       }
     }
@@ -168,9 +168,9 @@ void *run(void *args)
     while(simulating) {
       clock_gettime(CLOCK_MONOTONIC, &now);
       /*t is incremented by 0.1 every 0.1s*/
-      if(abs(now.tv_nsec - range.tv_nsec) > 100000000) {
+      if(abs(now.tv_nsec - range.tv_nsec) > 1000000000*TIME_GRAIN) {
         /*IDEA: increment a local 't' to assign time global 'elapsed_time' atomically and avoid the use of a semaphore*/
-        t += 0.1; elapsed_time = t;
+        t += TIME_GRAIN; elapsed_time = t;
         /*Update allocated processes lifetime*/
         update_allocated_processes();
         /*Update page table timers*/
@@ -467,7 +467,7 @@ void update_page_table_times()
     Process *process = page_table[i].process;
     if(process != NULL) {
       float page_time_elapsed = page_table[i].time;
-      page_time_elapsed += 0.1; page_table[i].time = page_time_elapsed;
+      page_time_elapsed += TIME_GRAIN; page_table[i].time = page_time_elapsed;
     }
   }
 }
@@ -480,7 +480,7 @@ void update_allocated_processes()
     bool allocated = process[i].allocated, done = process[i].done;
     if(allocated && !done) {
       float process_time_elapsed = process[i].lifetime;
-      process_time_elapsed += 0.1; process[i].lifetime = process_time_elapsed;
+      process_time_elapsed += TIME_GRAIN; process[i].lifetime = process_time_elapsed;
     }
   }
 }

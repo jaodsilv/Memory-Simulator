@@ -5,6 +5,9 @@
 #include <stdbool.h>
 #include <limits.h>
 
+/*Time Granularity used to measure time*/
+#define TIME_GRAIN 0.01
+
 /*Free space*/
 #define FF 1      /*First Fit*/
 #define NF 2      /*Next Fit*/
@@ -38,7 +41,7 @@
 
 /*Structures*/
 typedef struct process {
-	uint8_t pid;            /*64 bit PID*/
+	uint8_t pid;            /*8 bit PID*/
 	char name[64];          /*Process name*/
 	unsigned int size;      /*Process' total space address*/
   unsigned int arrival;   /*Time the process arrives*/
