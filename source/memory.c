@@ -609,6 +609,7 @@ void create_memory(int type)
       total_bitmap = malloc(total * sizeof(*total_bitmap));
       for(i = 0; i < total; i++) total_bitmap[i] = -1;
       free(n1); n1 = NULL;
+      fclose(mfile);
       break;
     case VIRTUAL:
       n2 = malloc(virtual * sizeof(*n2));
@@ -618,9 +619,9 @@ void create_memory(int type)
       virtual_bitmap = malloc(virtual * sizeof(*virtual_bitmap));
       for(i = 0; i < virtual; i++) virtual_bitmap[i] = -1;
       free(n2); n2 = NULL;
+      fclose(mfile);
       break;
   }
-  fclose(mfile);
 }
 
 /*Create the htreads and join them to start the simulation, calling 'run'*/
@@ -960,7 +961,6 @@ void print_memory(float last)
   int8_t *physical_array, *virtual_array;
   uint8_t *physical_array_u, *virtual_array_u;
 
-
   physical_array = malloc(total * sizeof(*physical_array));
   virtual_array = malloc(virtual * sizeof(*virtual_array));
   physical_array_u = malloc(total * sizeof(*physical_array_u));
@@ -1005,6 +1005,7 @@ void print_memory(float last)
       printf("%u ", physical_array_u[i]);
     }
   } printf("\n");
+  fclose(mfile); fclose(mfile_u);
 
   printf("Virtual memory state (binary file):\n");
   /*Read virtual binary file*/
@@ -1022,7 +1023,6 @@ void print_memory(float last)
       printf("%u ", virtual_array_u[i]);
     }
   } printf("\n");
-
   fclose(mfile); fclose(mfile_u);
   sem_post(&safe_access_memory);
 
