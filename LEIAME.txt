@@ -234,7 +234,7 @@ Os tempos de acesso são transformados logo que inicia a simulação e o que é 
 Isto é feito para todos os processos.
 
 Obs1: não há checagem para isso, mas é esperado que todos os números da entrada sejam inteiros e não-negativos.
-Obs2: o programa foi feito para ler sequencias de até 1024 caracteres por linha de processo. É aconselhável que cada linha
+Obs2: o programa foi feito para ler sequencias de até 4096 caracteres por linha de processo. É aconselhável que cada linha
 do arquivo de tracing tenha uma quantidade inferior a este limite de pelo menos uns 10 caracteres por segurança. Se o valor
 passar deste limite, são esperados erros na hora da leitura ou que o programa quebre durante a execução.
 

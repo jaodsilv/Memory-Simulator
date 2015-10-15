@@ -143,14 +143,14 @@ int read_trace_file(char *fname)
   printf("Reading trace file '%s'...", fname);
 
   /*Gets 'total' and 'virtual'*/
-  fgets(buffer, 1024, trace);
+  fgets(buffer, 4096, trace);
   spaces = sscanf(buffer, "%u %u\n", &total, &virtual);
   if(spaces < 2) {
     printf("\nError: was expecting to find pattern '%cu %cu' (line 0).\n", 37, 37);
     fclose(trace); return 1;
   }
 
-  while(fgets(buffer, 1024, trace) != NULL) {
+  while(fgets(buffer, 4096, trace) != NULL) {
     unsigned int j = 0, k = 0;
     /*Get 't0 name tf b'*/
     spaces = sscanf(buffer, "%u %s %u %u ", &process[p].arrival, process[p].name, &process[p].finish, &process[p].size);
