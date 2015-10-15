@@ -1,12 +1,12 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#define MAX_VIR_PAGES 4096
-#define MAX_TOT_PAGES 2048
+#define MAX_VIR_PAGES 1024
+#define MAX_TOT_PAGES 256
 #define MIN_PROCESS 10
 #define MAX_PROCESS_VARIATION 21
-#define MAX_INIT_TIME 60
-#define MAX_DUR_TIME 120
+#define MAX_INIT_TIME 30
+#define MAX_DUR_TIME 90
 
 int main(int argc, char const *argv[])
 {
@@ -24,10 +24,11 @@ int main(int argc, char const *argv[])
 		b = b * 16 + rand() % 16 + 1;
 		cout << t0 << " process" << i << " " << tf << " " << b;
 		int t = t0;
+		t = rand() % 5 + t;
 		while (t < tf) {
 			// cout << " " << t << " " << t0 << " " << tf << endl;
-			t = (rand() % (tf - t)) + t + 1;
 			cout << " " << rand() % b << " " << t;
+			t = rand() % 5 + t;
 		}
 		cout << endl;
 	}

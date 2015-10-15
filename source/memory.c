@@ -7,6 +7,8 @@ void simulate(int spc, int sbs, float intrvl)
 {
   pthread_t threads[3];   /*Manager(position = 0), Printer(position = 1) and Timer(position = 2)*/
   Thread args[3];         /*Arguments of the pthreads*/
+  char hand[30];
+  total_page_substitutions = 0;
 
   /*Check if information of the processes are valid*/
   if(!valid_process_information()) return;
@@ -26,7 +28,13 @@ void simulate(int spc, int sbs, float intrvl)
   initialize_free_list();
   /*Initialize simulator*/
   do_simulation(threads, args);
-  printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.2fs.\n\n", elapsed_time);
+
+  sprintf(hand, "%d\n", total_page_substitutions);
+  perror(hand);
+
+  printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.2fs.\n", elapsed_time);
+  printf("Number of Paginations: %d.\n\n", total_page_substitutions);
+
   free_heads();
   free(page_table); page_table = NULL;
   free(total_bitmap); total_bitmap = NULL;
@@ -408,6 +416,7 @@ void do_page_substitution(unsigned int page, int substitution_number)
       break;
   }
 
+  ++total_page_substitutions;
   free(loaded_pages); loaded_pages = NULL;
 }
 

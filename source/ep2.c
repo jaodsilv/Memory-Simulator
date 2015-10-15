@@ -177,7 +177,7 @@ int read_trace_file(char *fname)
       }
     }
     if(k % 2 != 0) {
-      printf("\nError. Missing one 'tn' for process '%s' (line %u).\n", process[p].name, p + 1);
+      printf("\nError. Missing one 'tn' for process '%s' (line %u).\n", process[p].name, p + 2);
       if(p > 0) {
         for(j = 0; j < p; j++) {
           free(process[j].position); process[j].position = NULL;
@@ -187,7 +187,7 @@ int read_trace_file(char *fname)
       fclose(trace); return 1;
     }
     if(k == 0) {
-      printf("\nError. Missing 'pn tn' pairs for process '%s' (line %u).\n", process[p].name, p + 1);
+      printf("\nError. Missing 'pn tn' pairs for process '%s' (line %u).\n", process[p].name, p + 2);
       if(p > 0) {
         for(j = 0; j < p; j++) {
           free(process[j].position); process[j].position = NULL;

@@ -6,7 +6,7 @@
 #include <limits.h>
 
 /*Time Granularity used to measure time*/
-#define TIME_GRAIN 0.01
+#define TIME_GRAIN 0.1
 
 /*Free space*/
 #define FF 1      /*First Fit*/
@@ -99,6 +99,7 @@ Free_List *nf_next;        /*Used by next fit algorithm to save last position*/
 Page_Table *page_table;    /*Structure to do the mapping from virtual memory to physical memory*/
 unsigned int total_pages;  /*Total number of pages*/
 unsigned int tick;
+unsigned int total_page_substitutions; /* Number of page changes*/
 int *virtual_bitmap;
 int *total_bitmap;
 /*Mutex*/
