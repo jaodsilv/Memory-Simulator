@@ -66,7 +66,8 @@ void reset()
 char *get_cmd(char *cmd)
 {
   cmd = readline("[EP2]: ");
-  return (expand(cmd) != -1) ? cmd : NULL;
+  if(cmd != NULL) return (expand(cmd) != -1) ? cmd : NULL;
+  else return NULL;
 }
 
 /*Expand the history or a previous command*/
@@ -79,7 +80,7 @@ int expand(char *cmd)
 
   if(result == 0 || result == 1) {
     add_history(expansion);
-    strncpy(cmd, expansion, strlen(cmd) - 1);
+    if(strlen(cmd) > 1) strncpy(cmd, expansion, strlen(cmd) - 1);
   }
   free(expansion); expansion = NULL;
   return result;
