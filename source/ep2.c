@@ -128,7 +128,7 @@ int read_trace_file(char *fname)
   FILE *trace;
   uint8_t pid = 0;
   unsigned int p = 0, i, spaces, lists[2048]; /*Maximum of 1024 pairs [pn, tn]*/
-  char c, buffer[4096], temp[1024], *data = buffer;
+  char c, buffer[4096], temp[1024];
   Process *temporary;
 
   /*Allocate processes array*/
@@ -167,14 +167,14 @@ int read_trace_file(char *fname)
     /*Fix pointer position*/
     for(c = buffer[i = spaces = 0]; spaces < 4; c = buffer[++i])
       if(c == ' ') spaces++;
-    strcpy(buffer, data + i - 1);
 
     /*Retrieve all 'pn tn' pairs*/
-    for(i = 0; i < strlen(buffer); i++) {
+    while(i < strlen(buffer)) {
       if(isdigit(buffer[i])) { temp[j++] = buffer[i];}
       else if(j > 0 && (buffer[i] == ' ' || buffer[i] == '\n')) {
         temp[j] = '\0'; lists[k++] = atoi(temp); j = 0;
       }
+      i++;
     }
     if(k % 2 != 0) {
       printf("\nError. Missing one 'tn' for process '%s' (line %u).\n", process[p].name, p + 2);
