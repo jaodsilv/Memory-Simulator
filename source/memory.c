@@ -29,9 +29,6 @@ void simulate(int spc, int sbs, float intrvl)
   /*Initialize simulator*/
   do_simulation(threads, args);
 
-  sprintf(hand, "%d\n", total_page_substitutions);
-  perror(hand);
-
   printf("\n\n* ~ * ~ * ~ * ~ * ~ * ~ * ~ * ~ *\nSimulation is now over.\nElapsed time: %.2fs.\n", elapsed_time);
   printf("Number of Paginations: %d.\n\n", total_page_substitutions);
 
